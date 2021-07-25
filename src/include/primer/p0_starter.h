@@ -23,7 +23,9 @@ template <typename T>
 class Matrix {
  protected:
   // TODO(P0): Add implementation
-  Matrix(int r, int c): rows(r), cols(c) {}
+  Matrix(int r, int c): rows(r), cols(c) {
+      linear = new T[r*c];
+  }
 
   // # of rows in the matrix
   int rows;
@@ -51,7 +53,9 @@ class Matrix {
   virtual void MatImport(T *arr) = 0;
 
   // TODO(P0): Add implementation
-  virtual ~Matrix() = default;
+  virtual ~Matrix() {
+      delete [] linear;
+  }
 };
 
 template <typename T>
