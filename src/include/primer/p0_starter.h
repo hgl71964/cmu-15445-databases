@@ -23,7 +23,7 @@ template <typename T>
 class Matrix {
  protected:
   // TODO(P0): Add implementation
-  Matrix(int r, int c) {}
+  Matrix(int r, int c): rows(r), cols(c) {}
 
   // # of rows in the matrix
   int rows;
