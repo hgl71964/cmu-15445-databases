@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <cstdio>
 #include <memory>
 
 namespace bustub {
@@ -62,25 +63,37 @@ template <typename T>
 class RowMatrix : public Matrix<T> {
  public:
   // TODO(P0): Add implementation
-  RowMatrix(int r, int c) : Matrix<T>(r, c) {}
+  RowMatrix(int r, int c) : Matrix<T>(r, c) {
+      data_ = new T *[r];
+      for (int i=0; i<r;i++) {
+          data_[i] = Matrix<T>::linear + i * r;
+      }
+  }
 
   // TODO(P0): Add implementation
-  int GetRows() override { return 0; }
+  int GetRows() override { return Matrix<T>::rows; }
 
   // TODO(P0): Add implementation
-  int GetColumns() override { return 0; }
+  int GetColumns() override { return Matrix<T>::cols; }
 
   // TODO(P0): Add implementation
   T GetElem(int i, int j) override { return data_[i][j]; }
 
   // TODO(P0): Add implementation
-  void SetElem(int i, int j, T val) override {}
+  void SetElem(int i, int j, T val) override { data_[i][j] = val;}
 
   // TODO(P0): Add implementation
-  void MatImport(T *arr) override {}
+  void MatImport(T *arr) override {
+      for (int i=0; i < Matrix<T>::rows * Matrix<T>::cols; i++) {
+          Matrix<T>::linear[i] = arr[i];
+      }
+  }
 
   // TODO(P0): Add implementation
-  ~RowMatrix() override = default;
+  //~RowMatrix() override = default;
+  ~RowMatrix() override {
+      delete [] data_;
+  }
 
  private:
   // 2D array containing the elements of the matrix in row-major format
