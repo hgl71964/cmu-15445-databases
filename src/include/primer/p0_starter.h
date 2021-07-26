@@ -66,7 +66,10 @@ class RowMatrix : public Matrix<T> {
   RowMatrix(int r, int c) : Matrix<T>(r, c) {
       data_ = new T *[r];
       for (int i=0; i<r;i++) {
-          data_[i] = Matrix<T>::linear + i * r;
+          if (i==0)
+              data_[i] = Matrix<T>::linear;
+          else
+              data_[i] = Matrix<T>::linear + i * r + 1;
       }
   }
 
