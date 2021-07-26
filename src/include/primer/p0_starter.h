@@ -24,9 +24,7 @@ template <typename T>
 class Matrix {
  protected:
   // TODO(P0): Add implementation
-  Matrix(int r, int c): rows(r), cols(c) {
-      linear = new T[r*c];
-  }
+  Matrix(int r, int c) : rows(r), cols(c) { linear = new T[r * c]; }
 
   // # of rows in the matrix
   int rows;
@@ -54,9 +52,7 @@ class Matrix {
   virtual void MatImport(T *arr) = 0;
 
   // TODO(P0): Add implementation
-  virtual ~Matrix() {
-      delete [] linear;
-  }
+  virtual ~Matrix() { delete[] linear; }
 };
 
 template <typename T>
@@ -64,10 +60,10 @@ class RowMatrix : public Matrix<T> {
  public:
   // TODO(P0): Add implementation
   RowMatrix(int r, int c) : Matrix<T>(r, c) {
-      data_ = new T *[r];
-      for (int i=0; i<r;i++) {
-          data_[i] = Matrix<T>::linear + i * c;
-      }
+    data_ = new T *[r];
+    for (int i = 0; i < r; i++) {
+      data_[i] = Matrix<T>::linear + i * c;
+    }
   }
 
   // TODO(P0): Add implementation
@@ -80,20 +76,18 @@ class RowMatrix : public Matrix<T> {
   T GetElem(int i, int j) override { return data_[i][j]; }
 
   // TODO(P0): Add implementation
-  void SetElem(int i, int j, T val) override { data_[i][j] = val;}
+  void SetElem(int i, int j, T val) override { data_[i][j] = val; }
 
   // TODO(P0): Add implementation
   void MatImport(T *arr) override {
-      for (int i=0; i < Matrix<T>::rows * Matrix<T>::cols; i++) {
-          Matrix<T>::linear[i] = arr[i];
-      }
+    for (int i = 0; i < Matrix<T>::rows * Matrix<T>::cols; i++) {
+      Matrix<T>::linear[i] = arr[i];
+    }
   }
 
   // TODO(P0): Add implementation
   //~RowMatrix() override = default;
-  ~RowMatrix() override {
-      delete [] data_;
-  }
+  ~RowMatrix() override { delete[] data_; }
 
  private:
   // 2D array containing the elements of the matrix in row-major format
@@ -112,14 +106,14 @@ class RowMatrixOperations {
                                                    std::unique_ptr<RowMatrix<T>> mat2) {
     // TODO(P0): Add code
     if (mat1->GetRows() != mat2->GetRows() || mat1->GetColumns() != mat2->GetColumns()) {
-        return std::unique_ptr<RowMatrix<T>>(nullptr);
+      return std::unique_ptr<RowMatrix<T>>(nullptr);
     }
 
     std::unique_ptr<RowMatrix<T>> m(new RowMatrix<T>(mat1->GetRows(), mat1->GetColumns()));
     for (int i = 0; i < mat1->GetRows(); i++) {
-        for (int j = 0; j < mat1->GetColumns(); j++) {
-            m->SetElem(i,j, mat1->GetElem(i, j) + mat2->GetElem(i, j));
-        }
+      for (int j = 0; j < mat1->GetColumns(); j++) {
+        m->SetElem(i, j, mat1->GetElem(i, j) + mat2->GetElem(i, j));
+      }
     }
 
     return std::unique_ptr<RowMatrix<T>>(std::move(m));
@@ -131,20 +125,18 @@ class RowMatrixOperations {
                                                         std::unique_ptr<RowMatrix<T>> mat2) {
     // TODO(P0): Add code
     if (mat1->GetColumns() != mat2->GetRows()) {
-        return std::unique_ptr<RowMatrix<T>>(nullptr);
+      return std::unique_ptr<RowMatrix<T>>(nullptr);
     }
 
     std::unique_ptr<RowMatrix<T>> m(new RowMatrix<T>(mat1->GetRows(), mat2->GetColumns()));
 
     for (int i = 0; i < mat1->GetRows(); i++) {
-        for (int j = 0; j < mat2->GetColumns(); j++) {
+      for (int j = 0; j < mat2->GetColumns(); j++) {
+        T val(0);
+        for (int k = 0; k < mat1->GetColumns(); k++) val += mat1->GetElem(i, k) * mat2->GetElem(k, j);
 
-            T val(0);
-            for (int k = 0; k < mat1->GetColumns(); k++)
-                val += mat1->GetElem(i,k) * mat2->GetElem(k,j);
-
-            m->SetElem(i,j, val);
-        }
+        m->SetElem(i, j, val);
+      }
     }
 
     return std::unique_ptr<RowMatrix<T>>(std::move(m));
