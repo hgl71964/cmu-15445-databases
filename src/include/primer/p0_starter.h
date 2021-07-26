@@ -66,10 +66,7 @@ class RowMatrix : public Matrix<T> {
   RowMatrix(int r, int c) : Matrix<T>(r, c) {
       data_ = new T *[r];
       for (int i=0; i<r;i++) {
-          if (i==0)
-              data_[i] = Matrix<T>::linear;
-          else
-              data_[i] = Matrix<T>::linear + i * r + 1;
+          data_[i] = Matrix<T>::linear + i * c;
       }
   }
 
@@ -114,8 +111,18 @@ class RowMatrixOperations {
   static std::unique_ptr<RowMatrix<T>> AddMatrices(std::unique_ptr<RowMatrix<T>> mat1,
                                                    std::unique_ptr<RowMatrix<T>> mat2) {
     // TODO(P0): Add code
+    if (mat1->GetRows() != mat2->GetRows() || mat1->GetColumns() != mat2->GetColumns()) {
+        return std::unique_ptr<RowMatrix<T>>(nullptr);
+    }
 
-    return std::unique_ptr<RowMatrix<T>>(nullptr);
+    std::unique_ptr<RowMatrix<T>> m(new RowMatrix<T>(mat1->GetRows(), mat1->GetColumns()));
+    for (int i = 0; i < mat1->GetRows(); i++) {
+        for (int j = 0; j < mat1->GetColumns(); j++) {
+            m->SetElem(i,j, mat1->GetElem(i, j) + mat2->GetElem(i, j));
+        }
+    }
+
+    return std::unique_ptr<RowMatrix<T>>(std::move(m));
   }
 
   // Compute matrix multiplication (mat1 * mat2) and return the result.
@@ -123,8 +130,24 @@ class RowMatrixOperations {
   static std::unique_ptr<RowMatrix<T>> MultiplyMatrices(std::unique_ptr<RowMatrix<T>> mat1,
                                                         std::unique_ptr<RowMatrix<T>> mat2) {
     // TODO(P0): Add code
+    if (mat1->GetColumns() != mat2->GetRows()) {
+        return std::unique_ptr<RowMatrix<T>>(nullptr);
+    }
 
-    return std::unique_ptr<RowMatrix<T>>(nullptr);
+    std::unique_ptr<RowMatrix<T>> m(new RowMatrix<T>(mat1->GetRows(), mat2->GetColumns()));
+
+    for (int i = 0; i < mat1->GetRows(); i++) {
+        for (int j = 0; j < mat2->GetColumns(); j++) {
+
+            T val(0);
+            for (int k = 0; k < mat1->GetColumns(); k++)
+                val += mat1->GetElem(i,k) * mat2->GetElem(k,j);
+
+            m->SetElem(i,j, val);
+        }
+    }
+
+    return std::unique_ptr<RowMatrix<T>>(std::move(m));
   }
 
   // Simplified GEMM (general matrix multiply) operation
