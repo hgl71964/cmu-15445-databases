@@ -15,6 +15,7 @@
 #include <list>
 #include <unordered_map>
 #include "common/config.h"
+#include "storage/page/page.h"
 
 namespace bustub {
 
@@ -94,8 +95,12 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
     new_frame_id = free_list_.front();
     free_list_.pop_front();
 
-  } else if () { // find in lru
+  } else { // find in lru
+    auto ok = replacer_.Victim(&new_frame_id);
 
+    if (!ok) {
+      // TODO ??
+    }
   }
 
   // 3.
@@ -115,7 +120,25 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   // 1.   If P does not exist, return true.
   // 2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
   // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
-  return false;
+
+  // 0.
+  DiskManager::DeallocatePage(page_id);
+
+  // 1.
+  if (page_table_.find(page_id) == page_table_.end())
+    return true;
+
+  // 2.
+  if (page_meta_data[page_id] != 0)
+    return false;
+
+  // 3.
+  int free_frame_id = page_table_[page_id];
+  page_table_.erase(page_id);
+  page_meta_data[page_id] = 0;
+  free_list_.push_back(free_frame_id);
+
+  return true;
 }
 
 void BufferPoolManager::FlushAllPagesImpl() {
