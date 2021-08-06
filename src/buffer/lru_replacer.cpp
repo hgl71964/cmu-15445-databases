@@ -12,6 +12,7 @@
 
 #include "buffer/lru_replacer.h"
 #include <cstddef>
+#include "common/config.h"
 #include <assert.h>
 
 namespace bustub {
@@ -24,14 +25,17 @@ LRUReplacer::~LRUReplacer() = default;
 
 bool LRUReplacer::Victim(frame_id_t *frame_id) {
 
-  if (this->Size() < 1) {
-    return false;
-  } else {
+  auto ok = !lst.empty();
 
+  if (ok) {
     // retrieve lru
-    return true;
-  }
+    *frame_id = lst.front();
 
+    // remove from replacer
+    lst.erase(lst.begin());
+    map.erase(*frame_id);
+  }
+  return ok;
 }
 
 void LRUReplacer::Pin(frame_id_t frame_id) {
@@ -42,9 +46,11 @@ void LRUReplacer::Pin(frame_id_t frame_id) {
 }
 
 void LRUReplacer::Unpin(frame_id_t frame_id) {
+
+  // frame_id_t has to be unique
   if (map.find(frame_id) == map.end()) {
 
-    assert(this->Size() < num_pages); // check
+    assert(this->Size() < num_pages); // check TODO
 
     // add to linked list and map
   }
