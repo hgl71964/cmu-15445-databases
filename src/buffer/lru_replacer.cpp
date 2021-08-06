@@ -35,7 +35,8 @@ bool LRUReplacer::Victim(frame_id_t *frame_id) {
     // remove from replacer
     lst.erase(lst.begin());
     map.erase(*frame_id);
-  }
+  } else
+    frame_id = nullptr;
   return ok;
 }
 
