@@ -40,8 +40,8 @@ bool LRUReplacer::Victim(frame_id_t *frame_id) {
 }
 
 void LRUReplacer::Pin(frame_id_t frame_id) {
-  if (map.find(frame_id) != map.end()) {
 
+  if (map.find(frame_id) != map.end()) {
     lst.erase(map[frame_id]);
     map.erase(frame_id);
     }
@@ -54,9 +54,11 @@ void LRUReplacer::Unpin(frame_id_t frame_id) {
 
     assert(this->Size() < num_pages); // check
 
-    // add to linked list and map
     lst.push_back(frame_id);
-    map[frame_id] = lst.rbegin();
+
+    std::list<frame_id_t>::iterator iter = lst.end();
+    iter--;
+    map[frame_id] = iter;
   }
 }
 
