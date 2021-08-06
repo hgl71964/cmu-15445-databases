@@ -26,6 +26,8 @@ LRUReplacer::~LRUReplacer() = default;
 
 bool LRUReplacer::Victim(frame_id_t *frame_id) {
 
+  mu.lock();
+
   auto ok = !lst.empty();
 
   if (ok) {
@@ -35,20 +37,26 @@ bool LRUReplacer::Victim(frame_id_t *frame_id) {
     // remove from replacer
     lst.erase(lst.begin());
     map.erase(*frame_id);
-  } else
+  } else {
     frame_id = nullptr;
+  }
+
+  mu.unlock();
   return ok;
 }
 
 void LRUReplacer::Pin(frame_id_t frame_id) {
 
+  mu.lock();
   if (map.find(frame_id) != map.end()) {
     lst.erase(map[frame_id]);
     map.erase(frame_id);
     }
+  mu.unlock();
 }
 
 void LRUReplacer::Unpin(frame_id_t frame_id) {
+  mu.lock();
 
   // frame_id_t has to be unique
   if (map.find(frame_id) == map.end()) {
@@ -61,8 +69,13 @@ void LRUReplacer::Unpin(frame_id_t frame_id) {
     iter--;
     map[frame_id] = iter;
   }
+  mu.unlock();
 }
 
-size_t LRUReplacer::Size() { return static_cast<size_t>(lst.size()); }
+size_t LRUReplacer::Size() {
+  mu.lock();
+  size_t res = static_cast<size_t>(lst.size());
+  mu.unlock();
+  return res; }
 
 }  // namespace bustub
