@@ -14,6 +14,7 @@
 
 #include <list>
 #include <unordered_map>
+#include "common/config.h"
 
 namespace bustub {
 
@@ -42,6 +43,23 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   // 2.     If R is dirty, write it back to the disk.
   // 3.     Delete R from the page table and insert P.
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
+
+
+  // TODO add lock
+
+  if (page_table_.find(page_id) != page_table_.end()) {
+
+    // pin + get frame id
+    frame_id_t frame_id = page_table_[page_id];
+    replacer_->Pin(frame_id);
+    page_meta_data[page_id] += 1;
+
+    return &pages_[frame_id];
+
+  } else {
+
+  }
+
   return nullptr;
 }
 
@@ -58,7 +76,37 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // 2.   Pick a victim page P from either the free list or the replacer. Always pick from the free list first.
   // 3.   Update P's metadata, zero out memory and add P to the page table.
   // 4.   Set the page ID output parameter. Return a pointer to P.
-  return nullptr;
+
+  // TODO add lock
+
+  // 0.
+  page_id_t new_page_id = DiskManager::AllocatePage();
+
+  // 1.  TODO
+  if () {
+    return nullptr;
+  }
+
+  // 2. TODO
+  frame_id_t new_frame_id;
+  if (!free_list_.empty()) {
+
+    new_frame_id = free_list_.front();
+    free_list_.pop_front();
+
+  } else if () { // find in lru
+
+  }
+
+  // 3.
+  pages_[new_frame_id] = Page{};
+  page_meta_data[new_page_id] = 0; // XXX init pin count as 0? other meta data?
+  page_table_[new_page_id] = new_frame_id;
+
+  // 4.
+  *page_id = new_page_id;
+  return &pages_[new_frame_id];
+
 }
 
 bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
