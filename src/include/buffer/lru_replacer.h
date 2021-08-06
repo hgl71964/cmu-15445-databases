@@ -58,7 +58,7 @@ class LRUReplacer : public Replacer {
   // frame_id -> position in lst
   std::unordered_map<frame_id_t, std::list<frame_id_t>::iterator> map;
 
-  std::mutex mu;
+  mutable std::mutex mu;
 };
 
 }  // namespace bustub
