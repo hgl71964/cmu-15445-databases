@@ -49,8 +49,13 @@ class LRUReplacer : public Replacer {
  private:
   // TODO(student): implement me!
 
+  // max capacity
   size_t num_pages;
+
+  // list of frame in the replacer, order = eviction order
   std::list<frame_id_t> lst;
+
+  // frame_id -> position in lst
   std::unordered_map<frame_id_t, int> map;
 };
 

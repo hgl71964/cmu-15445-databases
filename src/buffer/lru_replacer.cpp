@@ -12,6 +12,7 @@
 
 #include "buffer/lru_replacer.h"
 #include <cstddef>
+#include <assert.h>
 
 namespace bustub {
 
@@ -26,22 +27,25 @@ bool LRUReplacer::Victim(frame_id_t *frame_id) {
   if (this->Size() < 1) {
     return false;
   } else {
-    // retrive lru
+
+    // retrieve lru
     return true;
   }
 
 }
 
 void LRUReplacer::Pin(frame_id_t frame_id) {
-  if (map.find(frame_id) == map.end()) {
-    ;
-  } else {
+  if (map.find(frame_id) != map.end()) {
+
     // remove from linked list and map
-  }
+    }
 }
 
 void LRUReplacer::Unpin(frame_id_t frame_id) {
-  if (map.find(frame_id) == map.end() && this->Size() <  num_pages) {
+  if (map.find(frame_id) == map.end()) {
+
+    assert(this->Size() < num_pages); // check
+
     // add to linked list and map
   }
 }
