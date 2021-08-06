@@ -56,7 +56,7 @@ class LRUReplacer : public Replacer {
   std::list<frame_id_t> lst;
 
   // frame_id -> position in lst
-  std::unordered_map<frame_id_t, int> map;
+  std::unordered_map<frame_id_t, std::list<frame_id_t>::iterator> map;
 };
 
 }  // namespace bustub

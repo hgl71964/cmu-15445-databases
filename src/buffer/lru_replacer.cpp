@@ -12,6 +12,7 @@
 
 #include "buffer/lru_replacer.h"
 #include <cstddef>
+#include <iterator>
 #include "common/config.h"
 #include <assert.h>
 
@@ -41,7 +42,8 @@ bool LRUReplacer::Victim(frame_id_t *frame_id) {
 void LRUReplacer::Pin(frame_id_t frame_id) {
   if (map.find(frame_id) != map.end()) {
 
-    // remove from linked list and map
+    lst.erase(map[frame_id]);
+    map.erase(frame_id);
     }
 }
 
@@ -50,9 +52,11 @@ void LRUReplacer::Unpin(frame_id_t frame_id) {
   // frame_id_t has to be unique
   if (map.find(frame_id) == map.end()) {
 
-    assert(this->Size() < num_pages); // check TODO
+    assert(this->Size() < num_pages); // check
 
     // add to linked list and map
+    lst.push_back(frame_id);
+    map[frame_id] = lst.rbegin();
   }
 }
 
