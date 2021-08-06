@@ -13,6 +13,7 @@
 #include "buffer/lru_replacer.h"
 #include <cstddef>
 #include <iterator>
+#include <mutex>
 #include "common/config.h"
 #include <assert.h>
 
@@ -26,7 +27,7 @@ LRUReplacer::~LRUReplacer() = default;
 
 bool LRUReplacer::Victim(frame_id_t *frame_id) {
 
-  mu.lock();
+  //std::scoped_lock lock(mu);
 
   auto ok = !lst.empty();
 
@@ -41,22 +42,21 @@ bool LRUReplacer::Victim(frame_id_t *frame_id) {
     frame_id = nullptr;
   }
 
-  mu.unlock();
   return ok;
 }
 
 void LRUReplacer::Pin(frame_id_t frame_id) {
 
-  mu.lock();
+  //std::scoped_lock lock(mu);
   if (map.find(frame_id) != map.end()) {
     lst.erase(map[frame_id]);
     map.erase(frame_id);
     }
-  mu.unlock();
 }
 
 void LRUReplacer::Unpin(frame_id_t frame_id) {
-  mu.lock();
+
+  //std::scoped_lock lock(mu);
 
   // frame_id_t has to be unique
   if (map.find(frame_id) == map.end()) {
@@ -69,13 +69,12 @@ void LRUReplacer::Unpin(frame_id_t frame_id) {
     iter--;
     map[frame_id] = iter;
   }
-  mu.unlock();
 }
 
 size_t LRUReplacer::Size() {
-  mu.lock();
+  //std::scoped_lock lock(mu);
   size_t res = static_cast<size_t>(lst.size());
-  mu.unlock();
-  return res; }
+  return res;
+}
 
 }  // namespace bustub
