@@ -60,9 +60,27 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
     return &pages_[frame_id];
   }
 
+  // 1.2
+  auto frame_id = Find_replacementL();
 
+  // 2.
+  if (pages_[frame_id].is_dirty_) {
+    disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].GetData());
+  }
 
-  return nullptr;
+  // 3.
+  auto old_page_id = pages_[frame_id].page_id_;
+  page_table_.erase(old_page_id);
+  page_table_[page_id] = frame_id;
+
+  // 4.
+  pages_[frame_id].page_id_ = page_id;
+  pages_[frame_id].is_dirty_ = false;
+  pages_[frame_id].pin_count_ += 1;
+  replacer_->Pin(frame_id);
+  disk_manager_->ReadPage(page_id, pages_[frame_id].data_);
+
+  return &pages_[frame_id];
 }
 
 bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) { return false; }
@@ -97,7 +115,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   }
 
   // 2. (now must have unpinned pages)
-  frame_id_t new_frame_id = Find_replacement();
+  frame_id_t new_frame_id = Find_replacementL();
 
   // 3.
   Reset_meta_dataL(new_frame_id);
@@ -154,7 +172,7 @@ void BufferPoolManager::Reset_meta_dataL(frame_id_t frame_id) {
   pages_[frame_id].page_id_ = -1;
 }
 
-frame_id_t Find_replacement() {
+frame_id_t Find_replacementL() {
 
   frame_id_t fid;
 
@@ -167,7 +185,7 @@ frame_id_t Find_replacement() {
     // then find in lru
     auto ok = replacer_->Victim(&fid);
     if (!ok) {
-      LOG_ERROR("find replacement replacer not ok");
+      LOG_ERROR("find replacement replacer not ok"); // XXX
     }
   }
   return fid;

@@ -161,7 +161,7 @@ class BufferPoolManager {
   /**
    * find replacement pages
    */
-  frame_id_t Find_replacement();
+  frame_id_t Find_replacementL();
 
   /** Number of pages in the buffer pool. */
   size_t pool_size_;
