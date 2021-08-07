@@ -57,6 +57,8 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
     frame_id_t frame_id = page_table_[page_id];
     replacer_->Pin(frame_id);
     pages_[frame_id].pin_count_ += 1;
+
+    LOG_DEBUG("FetchPageImpl - found - page: %d", page_id);
     return &pages_[frame_id];
   }
 
@@ -65,7 +67,8 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 
   // 2.
   if (pages_[frame_id].is_dirty_) {
-    disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].GetData());
+    disk_manager_->WritePage(pages_[frame_id].page_id_,
+                              pages_[frame_id].GetData());
   }
 
   // 3.
@@ -76,9 +79,11 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   // 4.
   pages_[frame_id].page_id_ = page_id;
   pages_[frame_id].is_dirty_ = false;
-  pages_[frame_id].pin_count_ += 1;
+  pages_[frame_id].pin_count_ = 1;
   replacer_->Pin(frame_id);
   disk_manager_->ReadPage(page_id, pages_[frame_id].data_);
+
+  LOG_DEBUG("FetchPageImpl - not found - page: %d", page_id);
 
   return &pages_[frame_id];
 }
@@ -101,6 +106,12 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
 
   if (pages_[page_table_[page_id]].pin_count_ < 1) {
     replacer_->Unpin(page_table_[page_id]);
+
+    //if (pages_[page_table_[page_id]].is_dirty_) {
+
+    //  disk_manager_->WritePage(page_id, pages_[page_table_[page_id]].GetData());
+    //  pages_[page_table_[page_id]].is_dirty_ = false; // after flush, dirty = false
+    //}
   }
 
   return true;
@@ -111,12 +122,17 @@ bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
   std::scoped_lock<std::mutex> lock(latch_);
 
   if (page_id == INVALID_PAGE_ID) {
-    LOG_ERROR("flush page");
+    LOG_ERROR("flush page INVALID_PAGE_ID");
     return false;
   }
   if (page_table_.find(page_id) == page_table_.end()) return false;
 
+  LOG_DEBUG("flush page: %d, pin count: %d", page_id,
+          pages_[page_table_[page_id]].pin_count_);
   disk_manager_->WritePage(page_id, pages_[page_table_[page_id]].GetData());
+
+  // after flush, dirty = false
+  pages_[page_table_[page_id]].is_dirty_ = false;
   return true;
 }
 
@@ -150,7 +166,8 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // 3.
   Reset_meta_dataL(new_frame_id);
   pages_[new_frame_id].page_id_ = new_page_id;
-  pages_[new_frame_id].pin_count_ = 0; // XXX init pin count as 0? other meta data?
+  pages_[new_frame_id].pin_count_ = 1; // XXX init pin count as 1 and pin??
+  replacer_->Pin(new_frame_id);
 
   // register in page table
   page_table_[new_page_id] = new_frame_id;
@@ -183,6 +200,9 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   page_table_.erase(page_id);
 
   // reset meta data, XXX need to flush if dirty??
+  if (pages_[free_frame_id].is_dirty_) {
+    disk_manager_->WritePage(page_id, pages_[free_frame_id].GetData());
+  }
   Reset_meta_dataL(free_frame_id);
 
   // return to free list
@@ -223,6 +243,7 @@ frame_id_t BufferPoolManager::Find_replacementL() {
     if (!ok) {
       LOG_ERROR("find replacement replacer not ok"); // XXX
     }
+
   }
   return fid;
 }
