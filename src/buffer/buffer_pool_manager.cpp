@@ -83,7 +83,28 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   return &pages_[frame_id];
 }
 
-bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) { return false; }
+bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
+
+  std::scoped_lock<std::mutex> lock(latch_);
+
+  // does not exist
+  if (page_table_.find(page_id) == page_table_.end()) {
+    LOG_ERROR("unpin");
+    return false;
+  }
+  if (pages_[page_table_[page_id]].pin_count_ <= 0) {
+    return false;
+  }
+
+  pages_[page_table_[page_id]].is_dirty_ = is_dirty;
+  pages_[page_table_[page_id]].pin_count_ -= 1;
+
+  if (pages_[page_table_[page_id]].pin_count_ < 1) {
+    replacer_->Unpin(page_table_[page_id]);
+  }
+
+  return true;
+}
 
 bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
@@ -169,10 +190,10 @@ void BufferPoolManager::Reset_meta_dataL(frame_id_t frame_id) {
   pages_[frame_id].ResetMemory();
   pages_[frame_id].is_dirty_ = false;
   pages_[frame_id].pin_count_ = 0;
-  pages_[frame_id].page_id_ = -1;
+  pages_[frame_id].page_id_ = INVALID_PAGE_ID;
 }
 
-frame_id_t Find_replacementL() {
+frame_id_t BufferPoolManager::Find_replacementL() {
 
   frame_id_t fid;
 
