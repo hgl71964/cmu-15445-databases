@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdio>
 #include <memory>
 #include <utility>
@@ -151,11 +152,9 @@ class RowMatrixOperations {
                                                     std::unique_ptr<RowMatrix<T>> matB,
                                                     std::unique_ptr<RowMatrix<T>> matC) {
     // TODO(P0): Add code
-    std::unique_ptr<RowMatrix<T>> m(new RowMatrix<T>(matA->GetRows(), matB->GetColumns()));
-    m = RowMatrixOperations::MultiplyMatrices(matA, matB);
-
+    std::unique_ptr<RowMatrix<T>> m = RowMatrixOperations<T>::MultiplyMatrices(std::move(matA), std::move(matB));
     if (m) {
-      return RowMatrixOperations::AddMatrices(m, matC);
+      return RowMatrixOperations<T>::AddMatrices(std::move(m), std::move(matC));
     }
     return std::unique_ptr<RowMatrix<T>>(nullptr);
   }
