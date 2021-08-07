@@ -67,8 +67,7 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 
   // 2.
   if (pages_[frame_id].is_dirty_) {
-    disk_manager_->WritePage(pages_[frame_id].page_id_,
-                              pages_[frame_id].GetData());
+    disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].GetData());
   }
 
   // 3.
@@ -89,7 +88,6 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 }
 
 bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
-
   std::scoped_lock<std::mutex> lock(latch_);
 
   // does not exist
@@ -107,7 +105,7 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
   if (pages_[page_table_[page_id]].pin_count_ < 1) {
     replacer_->Unpin(page_table_[page_id]);
 
-    //if (pages_[page_table_[page_id]].is_dirty_) {
+    // if (pages_[page_table_[page_id]].is_dirty_) {
 
     //  disk_manager_->WritePage(page_id, pages_[page_table_[page_id]].GetData());
     //  pages_[page_table_[page_id]].is_dirty_ = false; // after flush, dirty = false
@@ -125,10 +123,11 @@ bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
     LOG_ERROR("flush page INVALID_PAGE_ID");
     return false;
   }
-  if (page_table_.find(page_id) == page_table_.end()) return false;
+  if (page_table_.find(page_id) == page_table_.end()) {
+    return false;
+  }
 
-  LOG_DEBUG("flush page: %d, pin count: %d", page_id,
-          pages_[page_table_[page_id]].pin_count_);
+  LOG_DEBUG("flush page: %d, pin count: %d", page_id, pages_[page_table_[page_id]].pin_count_);
   disk_manager_->WritePage(page_id, pages_[page_table_[page_id]].GetData());
 
   // after flush, dirty = false
@@ -150,7 +149,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   // 1.
   bool all_pin = true;
-  for (size_t i = 0; i< pool_size_; i++) {
+  for (size_t i = 0; i < pool_size_; i++) {
     if (pages_[i].pin_count_ < 1) {
       all_pin = false;
       break;
@@ -166,7 +165,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // 3.
   Reset_meta_dataL(new_frame_id);
   pages_[new_frame_id].page_id_ = new_page_id;
-  pages_[new_frame_id].pin_count_ = 1; // XXX init pin count as 1 and pin??
+  pages_[new_frame_id].pin_count_ = 1;  // XXX init pin count as 1 and pin??
   replacer_->Pin(new_frame_id);
 
   // register in page table
@@ -190,10 +189,14 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   disk_manager_->DeallocatePage(page_id);
 
   // 1.
-  if (page_table_.find(page_id) == page_table_.end()) return true;
+  if (page_table_.find(page_id) == page_table_.end()) {
+    return true;
+  }
 
   // 2.
-  if (pages_[page_table_[page_id]].pin_count_ > 0) return false;
+  if (pages_[page_table_[page_id]].pin_count_ > 0) {
+    return false;
+  }
 
   // 3.
   int free_frame_id = page_table_[page_id];
@@ -215,13 +218,12 @@ void BufferPoolManager::FlushAllPagesImpl() {
   // You can do it!
   //
   // callee will acquire lock
-  for (size_t i = 0; i< pool_size_; i++) {
+  for (size_t i = 0; i < pool_size_; i++) {
     BufferPoolManager::FlushPageImpl(pages_[i].page_id_);
   }
 }
 
 void BufferPoolManager::Reset_meta_dataL(frame_id_t frame_id) {
-
   pages_[frame_id].ResetMemory();
   pages_[frame_id].is_dirty_ = false;
   pages_[frame_id].pin_count_ = 0;
@@ -229,7 +231,6 @@ void BufferPoolManager::Reset_meta_dataL(frame_id_t frame_id) {
 }
 
 frame_id_t BufferPoolManager::Find_replacementL() {
-
   frame_id_t fid;
 
   // always find in free list first
@@ -237,13 +238,11 @@ frame_id_t BufferPoolManager::Find_replacementL() {
     fid = free_list_.front();
     free_list_.pop_front();
   } else {
-
     // then find in lru
     auto ok = replacer_->Victim(&fid);
     if (!ok) {
-      LOG_ERROR("find replacement replacer not ok"); // XXX
+      LOG_ERROR("find replacement replacer not ok");  // XXX
     }
-
   }
   return fid;
 }

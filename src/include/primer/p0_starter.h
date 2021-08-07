@@ -14,6 +14,7 @@
 
 #include <cstdio>
 #include <memory>
+#include <utility>
 
 namespace bustub {
 
@@ -86,7 +87,7 @@ class RowMatrix : public Matrix<T> {
   }
 
   // TODO(P0): Add implementation
-  //~RowMatrix() override = default;
+  // ~RowMatrix() override = default;
   ~RowMatrix() override { delete[] data_; }
 
  private:
@@ -133,8 +134,9 @@ class RowMatrixOperations {
     for (int i = 0; i < mat1->GetRows(); i++) {
       for (int j = 0; j < mat2->GetColumns(); j++) {
         T val(0);
-        for (int k = 0; k < mat1->GetColumns(); k++)
+        for (int k = 0; k < mat1->GetColumns(); k++) {
           val += mat1->GetElem(i, k) * mat2->GetElem(k, j);
+        }
 
         m->SetElem(i, j, val);
       }
@@ -149,13 +151,13 @@ class RowMatrixOperations {
                                                     std::unique_ptr<RowMatrix<T>> matB,
                                                     std::unique_ptr<RowMatrix<T>> matC) {
     // TODO(P0): Add code
-    auto *m1 = RowMatrixOperations::MultiplyMatrices(matA, matB);
+    std::unique_ptr<RowMatrix<T>> m(new RowMatrix<T>(matA->GetRows(), matB->GetColumns()));
+    m = RowMatrixOperations::MultiplyMatrices(matA, matB);
 
-    if (m1) {
-      return RowMatrixOperations::AddMatrices(m1, matC);
-    } else {
-      return std::unique_ptr<RowMatrix<T>>(nullptr);
+    if (m) {
+      return RowMatrixOperations::AddMatrices(m, matC);
     }
+    return std::unique_ptr<RowMatrix<T>>(nullptr);
   }
 };
 }  // namespace bustub

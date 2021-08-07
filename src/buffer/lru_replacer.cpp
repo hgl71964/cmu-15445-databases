@@ -11,11 +11,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/lru_replacer.h"
-#include <assert.h>
 #include <cstddef>
 #include <iterator>
 #include <mutex>
 #include "common/config.h"
+#include "common/logger.h"
 
 namespace bustub {
 
@@ -55,8 +55,9 @@ void LRUReplacer::Unpin(frame_id_t frame_id) {
 
   // frame_id_t has to be unique
   if (map.find(frame_id) == map.end()) {
-    assert(lst.size() < num_pages);  // check
-
+    if (lst.size() > num_pages) {
+      LOG_ERROR("lru size");
+    }
     lst.push_back(frame_id);
 
     std::list<frame_id_t>::iterator iter = lst.end();
