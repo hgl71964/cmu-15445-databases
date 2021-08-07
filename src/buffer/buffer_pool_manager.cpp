@@ -13,6 +13,8 @@
 #include "buffer/buffer_pool_manager.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <list>
 #include <mutex>
 #include <unordered_map>
@@ -85,7 +87,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   // 1.
   bool all_pin = true;
-  for (int i = 0; i< pool_size_; i++) {
+  for (size_t i = 0; i< pool_size_; i++) {
     if (pages_[i].pin_count_ < 1) {
       all_pin = false;
       break;
@@ -156,7 +158,7 @@ void BufferPoolManager::FlushAllPagesImpl() {
   // You can do it!
 }
 
-void Reset_meta_dataL(frame_id_t frame_id) {
+void BufferPoolManager::Reset_meta_dataL(frame_id_t frame_id) {
   pages_[frame_id].ResetMemory();
   pages_[frame_id].is_dirty_ = false;
   pages_[frame_id].pin_count_ = 0;
