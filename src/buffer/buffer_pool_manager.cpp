@@ -50,18 +50,17 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   // 3.     Delete R from the page table and insert P.
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
 
-  // TODO add lock
+  std::scoped_lock<std::mutex> lock(latch_);
 
+  // 1.1
   if (page_table_.find(page_id) != page_table_.end()) {
-    // pin + get frame id
     frame_id_t frame_id = page_table_[page_id];
     replacer_->Pin(frame_id);
-    page_meta_data[page_id] += 1;
-
+    pages_[frame_id].pin_count_ += 1;
     return &pages_[frame_id];
-
-  } else {
   }
+
+
 
   return nullptr;
 }
@@ -97,18 +96,8 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
     return nullptr;
   }
 
-  // 2.
-  frame_id_t new_frame_id;
-  if (!free_list_.empty()) {
-    new_frame_id = free_list_.front();
-    free_list_.pop_front();
-
-  } else {  // find in lru
-    auto ok = replacer_->Victim(&new_frame_id);
-    if (!ok) {
-      LOG_ERROR("NewPageImpl replacer not ok");
-    }
-  }
+  // 2. (now must have unpinned pages)
+  frame_id_t new_frame_id = Find_replacement();
 
   // 3.
   Reset_meta_dataL(new_frame_id);
@@ -163,6 +152,25 @@ void BufferPoolManager::Reset_meta_dataL(frame_id_t frame_id) {
   pages_[frame_id].is_dirty_ = false;
   pages_[frame_id].pin_count_ = 0;
   pages_[frame_id].page_id_ = -1;
+}
+
+frame_id_t Find_replacement() {
+
+  frame_id_t fid;
+
+  // always find in free list first
+  if (!free_list_.empty()) {
+    fid = free_list_.front();
+    free_list_.pop_front();
+  } else {
+
+    // then find in lru
+    auto ok = replacer_->Victim(&fid);
+    if (!ok) {
+      LOG_ERROR("find replacement replacer not ok");
+    }
+  }
+  return fid;
 }
 
 }  // namespace bustub

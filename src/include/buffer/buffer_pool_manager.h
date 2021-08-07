@@ -158,6 +158,11 @@ class BufferPoolManager {
    */
   void Reset_meta_dataL(frame_id_t frame_id);
 
+  /**
+   * find replacement pages
+   */
+  frame_id_t Find_replacement();
+
   /** Number of pages in the buffer pool. */
   size_t pool_size_;
   /** Array of buffer pool pages. */
