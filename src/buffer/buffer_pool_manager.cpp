@@ -45,11 +45,9 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   // 3.     Delete R from the page table and insert P.
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
 
-
   // TODO add lock
 
   if (page_table_.find(page_id) != page_table_.end()) {
-
     // pin + get frame id
     frame_id_t frame_id = page_table_[page_id];
     replacer_->Pin(frame_id);
@@ -58,7 +56,6 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
     return &pages_[frame_id];
 
   } else {
-
   }
 
   return nullptr;
@@ -81,22 +78,21 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // TODO add lock
 
   // 0.
-  page_id_t new_page_id = DiskManager::AllocatePage();
+  page_id_t new_page_id = disk_manager_->AllocatePage();
 
   // 1.  TODO
-  if () {
+  if (false) {
     return nullptr;
   }
 
   // 2. TODO
   frame_id_t new_frame_id;
   if (!free_list_.empty()) {
-
     new_frame_id = free_list_.front();
     free_list_.pop_front();
 
-  } else { // find in lru
-    auto ok = replacer_.Victim(&new_frame_id);
+  } else {  // find in lru
+    auto ok = replacer_->Victim(&new_frame_id);
 
     if (!ok) {
       // TODO ??
@@ -104,14 +100,13 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   }
 
   // 3.
-  pages_[new_frame_id] = Page{};
-  page_meta_data[new_page_id] = 0; // XXX init pin count as 0? other meta data?
+  pages_[new_frame_id].ResetMemory();
+  page_meta_data[new_page_id] = 0;  // XXX init pin count as 0? other meta data?
   page_table_[new_page_id] = new_frame_id;
 
   // 4.
   *page_id = new_page_id;
   return &pages_[new_frame_id];
-
 }
 
 bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
@@ -122,15 +117,13 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
 
   // 0.
-  DiskManager::DeallocatePage(page_id);
+  disk_manager_->DeallocatePage(page_id);
 
   // 1.
-  if (page_table_.find(page_id) == page_table_.end())
-    return true;
+  if (page_table_.find(page_id) == page_table_.end()) return true;
 
   // 2.
-  if (page_meta_data[page_id] != 0)
-    return false;
+  if (page_meta_data[page_id] != 0) return false;
 
   // 3.
   int free_frame_id = page_table_[page_id];

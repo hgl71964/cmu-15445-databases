@@ -133,7 +133,8 @@ class RowMatrixOperations {
     for (int i = 0; i < mat1->GetRows(); i++) {
       for (int j = 0; j < mat2->GetColumns(); j++) {
         T val(0);
-        for (int k = 0; k < mat1->GetColumns(); k++) val += mat1->GetElem(i, k) * mat2->GetElem(k, j);
+        for (int k = 0; k < mat1->GetColumns(); k++)
+          val += mat1->GetElem(i, k) * mat2->GetElem(k, j);
 
         m->SetElem(i, j, val);
       }
@@ -148,8 +149,13 @@ class RowMatrixOperations {
                                                     std::unique_ptr<RowMatrix<T>> matB,
                                                     std::unique_ptr<RowMatrix<T>> matC) {
     // TODO(P0): Add code
+    auto *m1 = RowMatrixOperations::MultiplyMatrices(matA, matB);
 
-    return std::unique_ptr<RowMatrix<T>>(nullptr);
+    if (m1) {
+      return RowMatrixOperations::AddMatrices(m1, matC);
+    } else {
+      return std::unique_ptr<RowMatrix<T>>(nullptr);
+    }
   }
 };
 }  // namespace bustub

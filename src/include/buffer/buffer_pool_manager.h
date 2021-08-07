@@ -172,6 +172,5 @@ class BufferPoolManager {
 
   // frame pin count
   std::unordered_map<page_id_t, int> page_meta_data;
-
 };
 }  // namespace bustub
