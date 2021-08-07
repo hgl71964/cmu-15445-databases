@@ -12,9 +12,12 @@
 
 #include "buffer/buffer_pool_manager.h"
 
+#include <algorithm>
 #include <list>
+#include <mutex>
 #include <unordered_map>
 #include "common/config.h"
+#include "common/logger.h"
 #include "storage/page/page.h"
 
 namespace bustub {
@@ -75,17 +78,24 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // 3.   Update P's metadata, zero out memory and add P to the page table.
   // 4.   Set the page ID output parameter. Return a pointer to P.
 
-  // TODO add lock
+  std::scoped_lock<std::mutex> lock(latch_);
 
   // 0.
   page_id_t new_page_id = disk_manager_->AllocatePage();
 
-  // 1.  TODO
-  if (false) {
+  // 1.
+  bool all_pin = true;
+  for (int i = 0; i< pool_size_; i++) {
+    if (pages_[i].pin_count_ < 1) {
+      all_pin = false;
+      break;
+    }
+  }
+  if (all_pin) {
     return nullptr;
   }
 
-  // 2. TODO
+  // 2.
   frame_id_t new_frame_id;
   if (!free_list_.empty()) {
     new_frame_id = free_list_.front();
@@ -93,15 +103,16 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   } else {  // find in lru
     auto ok = replacer_->Victim(&new_frame_id);
-
     if (!ok) {
-      // TODO ??
+      LOG_ERROR("NewPageImpl replacer not ok");
     }
   }
 
   // 3.
   pages_[new_frame_id].ResetMemory();
-  page_meta_data[new_page_id] = 0;  // XXX init pin count as 0? other meta data?
+  pages_[new_frame_id].page_id_ = new_page_id; // XXX init pin count as 0? other meta data?
+  pages_[new_frame_id].pin_count_ = 0; // XXX init pin count as 0? other meta data?
+  pages_[new_frame_id].is_dirty_ = false; // XXX init pin count as 0? other meta data?
   page_table_[new_page_id] = new_frame_id;
 
   // 4.
