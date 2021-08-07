@@ -108,6 +108,8 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
 
 bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
+  std::scoped_lock<std::mutex> lock(latch_);
+
   if (page_id == INVALID_PAGE_ID) {
     LOG_ERROR("flush page");
     return false;
@@ -191,12 +193,15 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
 void BufferPoolManager::FlushAllPagesImpl() {
   // You can do it!
+  //
+  // callee will acquire lock
   for (size_t i = 0; i< pool_size_; i++) {
     BufferPoolManager::FlushPageImpl(pages_[i].page_id_);
   }
 }
 
 void BufferPoolManager::Reset_meta_dataL(frame_id_t frame_id) {
+
   pages_[frame_id].ResetMemory();
   pages_[frame_id].is_dirty_ = false;
   pages_[frame_id].pin_count_ = 0;
