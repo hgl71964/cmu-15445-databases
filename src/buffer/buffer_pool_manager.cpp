@@ -108,7 +108,14 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
 
 bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
-  return false;
+  if (page_id == INVALID_PAGE_ID) {
+    LOG_ERROR("flush page");
+    return false;
+  }
+  if (page_table_.find(page_id) == page_table_.end()) return false;
+
+  disk_manager_->WritePage(page_id, pages_[page_table_[page_id]].GetData());
+  return true;
 }
 
 Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
@@ -184,6 +191,9 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
 void BufferPoolManager::FlushAllPagesImpl() {
   // You can do it!
+  for (size_t i = 0; i< pool_size_; i++) {
+    BufferPoolManager::FlushPageImpl(pages_[i].page_id_);
+  }
 }
 
 void BufferPoolManager::Reset_meta_dataL(frame_id_t frame_id) {
