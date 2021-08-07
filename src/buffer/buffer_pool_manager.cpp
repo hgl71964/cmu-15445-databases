@@ -109,10 +109,11 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   }
 
   // 3.
-  pages_[new_frame_id].ResetMemory();
-  pages_[new_frame_id].page_id_ = new_page_id; // XXX init pin count as 0? other meta data?
+  Reset_meta_dataL(new_frame_id);
+  pages_[new_frame_id].page_id_ = new_page_id;
   pages_[new_frame_id].pin_count_ = 0; // XXX init pin count as 0? other meta data?
-  pages_[new_frame_id].is_dirty_ = false; // XXX init pin count as 0? other meta data?
+
+  // register in page table
   page_table_[new_page_id] = new_frame_id;
 
   // 4.
@@ -127,6 +128,8 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   // 2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
   // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
 
+  std::scoped_lock<std::mutex> lock(latch_);
+
   // 0.
   disk_manager_->DeallocatePage(page_id);
 
@@ -134,12 +137,16 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   if (page_table_.find(page_id) == page_table_.end()) return true;
 
   // 2.
-  if (page_meta_data[page_id] != 0) return false;
+  if (pages_[page_table_[page_id]].pin_count_ > 0) return false;
 
   // 3.
   int free_frame_id = page_table_[page_id];
   page_table_.erase(page_id);
-  page_meta_data[page_id] = 0;
+
+  // reset meta data, XXX need to flush if dirty??
+  Reset_meta_dataL(free_frame_id);
+
+  // return to free list
   free_list_.push_back(free_frame_id);
 
   return true;
@@ -147,6 +154,13 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
 void BufferPoolManager::FlushAllPagesImpl() {
   // You can do it!
+}
+
+void Reset_meta_dataL(frame_id_t frame_id) {
+  pages_[frame_id].ResetMemory();
+  pages_[frame_id].is_dirty_ = false;
+  pages_[frame_id].pin_count_ = 0;
+  pages_[frame_id].page_id_ = -1;
 }
 
 }  // namespace bustub
