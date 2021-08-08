@@ -111,7 +111,7 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
     return false;
   }
 
-  pages_[page_table_[page_id]].is_dirty_ = is_dirty;
+  pages_[page_table_[page_id]].is_dirty_ |= is_dirty;
   pages_[page_table_[page_id]].pin_count_ -= 1;
 
   if (pages_[page_table_[page_id]].pin_count_ < 1) {
@@ -246,7 +246,6 @@ void BufferPoolManager::FlushAllPagesImpl() {
   std::scoped_lock<std::mutex> lock(latch_);
 
   for (size_t i = 0; i < pool_size_; i++) {
-
     if (pages_[i].page_id_ == INVALID_PAGE_ID) {
       continue;
     }
