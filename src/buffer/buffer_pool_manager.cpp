@@ -105,7 +105,7 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
   // does not exist
   if (page_table_.find(page_id) == page_table_.end()) {
     LOG_ERROR("unpin");
-    return false;
+    return true;
   }
   if (pages_[page_table_[page_id]].pin_count_ <= 0) {
     return false;
@@ -242,14 +242,16 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
 void BufferPoolManager::FlushAllPagesImpl() {
   // You can do it!
-  //
-  // callee will acquire lock XXX possible race
-  for (size_t i = 0; i < pool_size_; i++) {
-    latch_.lock();
-    page_id_t pid = pages_[i].page_id_;
-    latch_.unlock();
 
-    BufferPoolManager::FlushPageImpl(pid);
+  std::scoped_lock<std::mutex> lock(latch_);
+
+  for (size_t i = 0; i < pool_size_; i++) {
+
+    if (pages_[i].page_id_ == INVALID_PAGE_ID) {
+      continue;
+    }
+    disk_manager_->WritePage(pages_[i].page_id_, pages_[i].GetData());
+    pages_[i].is_dirty_ = false;
   }
 }
 
