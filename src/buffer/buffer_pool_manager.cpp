@@ -24,7 +24,7 @@
 
 namespace bustub {
 namespace {
-  auto debug_msg = true;
+auto debug_msg = false;
 }
 
 BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager, LogManager *log_manager)
@@ -65,6 +65,11 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
       LOG_INFO("FetchPageImpl - found - page_id: %d", page_id);
     }
     return &pages_[frame_id];
+  }
+
+  // if all pinned, cannot find replacement
+  if (is_all_pin()) {
+    return nullptr;
   }
 
   // 1.2
@@ -159,14 +164,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   page_id_t new_page_id = disk_manager_->AllocatePage();
 
   // 1.
-  bool all_pin = true;
-  for (size_t i = 0; i < pool_size_; i++) {
-    if (pages_[i].pin_count_ < 1) {
-      all_pin = false;
-      break;
-    }
-  }
-  if (all_pin) {
+  if (is_all_pin()) {
     return nullptr;
   }
 
@@ -180,13 +178,16 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   page_id_t old_pid = pages_[new_frame_id].page_id_;
   page_table_.erase(old_pid);
 
-  // XXX flush if dirty?
+  // flush if dirty
+  if (pages_[new_frame_id].is_dirty_) {
+    disk_manager_->WritePage(old_pid, pages_[new_frame_id].GetData());
+  }
 
   // 3.
   pages_[new_frame_id].ResetMemory();
   pages_[new_frame_id].is_dirty_ = false;
   pages_[new_frame_id].page_id_ = new_page_id;
-  pages_[new_frame_id].pin_count_ = 1;  // XXX init pin count as 1 and pin??
+  pages_[new_frame_id].pin_count_ = 1;
   replacer_->Pin(new_frame_id);
 
   // register in page table
@@ -223,7 +224,7 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   frame_id_t free_frame_id = page_table_[page_id];
   page_table_.erase(page_id);
 
-  // reset meta data, XXX need to flush if dirty??
+  // reset meta data, flush if dirty
   if (pages_[free_frame_id].is_dirty_) {
     disk_manager_->WritePage(page_id, pages_[free_frame_id].GetData());
   }
@@ -244,13 +245,23 @@ void BufferPoolManager::FlushAllPagesImpl() {
   //
   // callee will acquire lock XXX possible race
   for (size_t i = 0; i < pool_size_; i++) {
-
     latch_.lock();
     page_id_t pid = pages_[i].page_id_;
     latch_.unlock();
 
     BufferPoolManager::FlushPageImpl(pid);
   }
+}
+
+bool BufferPoolManager::is_all_pin() {
+  bool all_pin = true;
+  for (size_t i = 0; i < pool_size_; i++) {
+    if (pages_[i].pin_count_ < 1) {
+      all_pin = false;
+      break;
+    }
+  }
+  return all_pin;
 }
 
 void BufferPoolManager::Reset_meta_dataL(frame_id_t frame_id) {

@@ -163,6 +163,11 @@ class BufferPoolManager {
    */
   frame_id_t Find_replacementL();
 
+  /**
+   * check if all frames in the buffer pool are pinned
+   */
+  bool is_all_pin();
+
   /** Number of pages in the buffer pool. */
   size_t pool_size_;
   /** Array of buffer pool pages. */
