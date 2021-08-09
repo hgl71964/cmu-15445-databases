@@ -15,6 +15,7 @@
 #include "common/config.h"
 #include "common/exception.h"
 #include "storage/page/b_plus_tree_internal_page.h"
+#include "storage/page/b_plus_tree_page.h"
 #include "type/type_id.h"
 #include "common/logger.h"
 
@@ -112,8 +113,10 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::PopulateNewRoot(const ValueType &old_value, const KeyType &new_key,
                                                      const ValueType &new_value) {
+  // TODO new_root_page = ???
+  // new_root_page.Init()
   // TODO not allow duplicate
-  page_id_t parent_id = BPlusTreePage::GetPageId();
+  page_id_t parent_id = BPlusTreePage::GetParentPageId();
 
   //TODO
 }
@@ -150,7 +153,18 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *recipient
  * So I need to 'adopt' them by changing their parent page id, which needs to be persisted with BufferPoolManger
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items, int size, BufferPoolManager *buffer_pool_manager) {}
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items, int size, BufferPoolManager *buffer_pool_manager) {
+
+  for (int i = 0; i < size; i++) {
+    array[i] = *(items+i);
+  }
+  BPlusTreePage::SetSize(size);
+
+  // TODO change parent id??
+
+  // persist
+  buffer_pool_manager.FlushPageImpl(BPlusTreePage::GetPageId());
+}
 
 /*****************************************************************************
  * REMOVE
