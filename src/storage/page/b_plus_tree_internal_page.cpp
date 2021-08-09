@@ -90,6 +90,8 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const {
  */
 INDEX_TEMPLATE_ARGUMENTS
 ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator) const {
+
+  // this tree does not allow duplicates key
   for (int i = 1; i < BPlusTreePage::GetSize(); i++) {
     if (comparator(array[i].first, key) == 0) {
       return array[i].second;
@@ -102,7 +104,7 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
  * INSERTION
  *****************************************************************************/
 /*
- * Populate new root page with old_value + new_key & new_value
+* Populate new root page with old_value + new_key & new_value
  * When the insertion cause overflow from leaf page all the way upto the root
  * page, you should create a new root page and populate its elements.
  * NOTE: This method is only called within InsertIntoParent()(b_plus_tree.cpp)
@@ -110,6 +112,10 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::PopulateNewRoot(const ValueType &old_value, const KeyType &new_key,
                                                      const ValueType &new_value) {
+  // TODO not allow duplicate
+  page_id_t parent_id = BPlusTreePage::GetPageId();
+
+  //TODO
 }
 /*
  * Insert new_key & new_value pair right after the pair with its value ==
@@ -119,7 +125,14 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::PopulateNewRoot(const ValueType &old_value,
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value, const KeyType &new_key,
                                                     const ValueType &new_value) {
-  return 0;
+  // TODO not allow duplicate
+
+  auto index = ValueIndex(old_value);
+
+  //TODO insert
+
+  BPlusTreePage::IncreaseSize(1);
+  return BPlusTreePage::GetSize();
 }
 
 /*****************************************************************************
