@@ -16,6 +16,7 @@
 #include "common/exception.h"
 #include "storage/page/b_plus_tree_internal_page.h"
 #include "type/type_id.h"
+#include "common/logger.h"
 
 namespace bustub {
 /*****************************************************************************
@@ -28,11 +29,11 @@ namespace bustub {
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, int max_size) {
-  SetPageType(IndexPageType::INTERNAL_PAGE);
-  SetSize(INTERNAL_PAGE_SIZE); // XXX is it?
-  SetPageId(page_id);
-  SetParentPageId(parent_id);
-  SetMaxSize(max_size);
+  BPlusTreePage::SetPageType(IndexPageType::INTERNAL_PAGE);
+  BPlusTreePage::SetSize(sizeof(array)/sizeof(MappingType)); // XXX set current size
+  BPlusTreePage::SetPageId(page_id);
+  BPlusTreePage::SetParentPageId(parent_id);
+  BPlusTreePage::SetMaxSize(max_size);
 }
 /*
  * Helper method to get/set the key associated with input "index"(a.k.a
@@ -41,7 +42,10 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
 INDEX_TEMPLATE_ARGUMENTS
 KeyType B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const {
   // replace with your own code
-  // XXX if index == 1 it shouldn't be valid
+
+  if (index == 0) {
+    LOG_ERROR("KeyAt 0");
+  }
   return array[index].first;
 }
 
@@ -56,7 +60,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const {
-  for (int i = 0; i < BPlusTreePage::GetSize(); i++) {
+  for (int i = 1; i < BPlusTreePage::GetSize(); i++) {
     if (array[i].second == value) {
       return i;
     }
@@ -69,7 +73,12 @@ int B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const {
  * offset)
  */
 INDEX_TEMPLATE_ARGUMENTS
-ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const { return array[index].second; }
+ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const {
+  if (index == 0) {
+    LOG_ERROR("ValueAt 0");
+  }
+  return array[index].second;
+}
 
 /*****************************************************************************
  * LOOKUP
@@ -100,7 +109,8 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::PopulateNewRoot(const ValueType &old_value, const KeyType &new_key,
-                                                     const ValueType &new_value) {}
+                                                     const ValueType &new_value) {
+}
 /*
  * Insert new_key & new_value pair right after the pair with its value ==
  * old_value
