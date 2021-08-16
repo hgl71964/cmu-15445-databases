@@ -45,8 +45,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
 INDEX_TEMPLATE_ARGUMENTS
 KeyType B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const {
   // replace with your own code
-
-  if (index == 0 || index >= BPlusTreePage::GetSize()) {
+  if (index < 0 || index >= BPlusTreePage::GetSize()) {
     LOG_ERROR("internal Page KeyAt");
   }
   return array[index].first;
@@ -54,7 +53,7 @@ KeyType B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const {
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
-  if (index == 0 || index >= BPlusTreePage::GetSize()) {
+  if (index < 0 || index >= BPlusTreePage::GetSize()) {
     LOG_ERROR("internal Page SetKeyAt");
   }
   array[index].first = key;
@@ -66,7 +65,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const {
-  for (int i = 1; i < BPlusTreePage::GetSize(); i++) {
+  for (int i = 0; i < BPlusTreePage::GetSize(); i++) {
     if (array[i].second == value) {
       return i;
     }
@@ -80,7 +79,7 @@ int B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const {
  */
 INDEX_TEMPLATE_ARGUMENTS
 ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const {
-  if (index == 0 || index >= BPlusTreePage::GetSize()) {
+  if (index < 0 || index >= BPlusTreePage::GetSize()) {
     LOG_ERROR("internal Page ValueAt");
   }
   return array[index].second;
@@ -118,14 +117,14 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
  * NOTE: This method is only called within InsertIntoParent()(b_plus_tree.cpp)
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::PopulateNewRoot(const ValueType &old_value, const KeyType &new_key,
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::PopulateNewRoot(const ValueType &old_value, 
+                                                     const KeyType &new_key,
                                                      const ValueType &new_value) {
-  // TODO new_root_page = ???
-  // new_root_page.Init()
-  // TODO not allow duplicate
-  page_id_t parent_id = BPlusTreePage::GetParentPageId();
-
-  //TODO
+  // root node should have 1 key 2 pointers - and the first key is invalid
+  array[0].second = old_value;
+  array[1].first = new_key;
+  array[1].second = new_value;
+  BPlusTreePage::SetSize(2);
 }
 /*
  * Insert new_key & new_value pair right after the pair with its value ==
@@ -133,15 +132,23 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::PopulateNewRoot(const ValueType &old_value,
  * @return:  new size after insertion
  */
 INDEX_TEMPLATE_ARGUMENTS
-int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value, const KeyType &new_key,
+int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value, 
+                                                    const KeyType &new_key,
                                                     const ValueType &new_value) {
-  // TODO not allow duplicate
+  
+  if (BPlusTreePage::GetSize() >= BPlusTreePage::GetMaxSize()) {
+    LOG_ERROR("internal InsertNodeAfter size");
+  }
 
   auto index = ValueIndex(old_value);
-
-  //TODO insert
-
   BPlusTreePage::IncreaseSize(1);
+
+  for (int i = b_plus_tree_page::GetSize()-1; i > index + 1; i--) {
+   array[i].key = array[i-1].key;
+   array[i].value = array[i-1].value;
+  }
+  array[index+1].key = new_key;
+  array[index+1].value = new_value;
   return BPlusTreePage::GetSize();
 }
 
@@ -153,16 +160,18 @@ int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value, 
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *recipient,
-                                                BufferPoolManager *buffer_pool_manager) {}
+                                                BufferPoolManager *buffer_pool_manager) {
+
+}
 
 /* Copy entries into me, starting from {items} and copy {size} entries.
- * Since it is an internal page, for all entries (pages) moved, their parents page now changes to me.
- * So I need to 'adopt' them by changing their parent page id, which needs to be persisted with BufferPoolManger
- */
+* Since it is an internal page, for all entries (pages) moved, their parents page now changes to me.
+* So I need to 'adopt' them by changing their parent page id, which needs to be persisted with BufferPoolManger
+*/
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items, int size, BufferPoolManager *buffer_pool_manager) {
 
-  for (int i = 0; i < size; i++) {
+for (int i = 0; i < size; i++) {
     array[i] = *(items+i);
   }
   BPlusTreePage::SetSize(size);
