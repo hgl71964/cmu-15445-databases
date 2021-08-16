@@ -286,8 +286,7 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyLastFrom(const MappingType &pair, BufferPoolManager *buffer_pool_manager) {
   auto size = BPlusTreePage::GetSize();
   BPlusTreePage::IncreaseSize(1);
-  array[size].first = pair->first;
-  array[size].second = pair->second;
+  array[size] = pair;
 
   // adopt
   auto page_id = array[size].second;
@@ -324,8 +323,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyFirstFrom(const MappingType &pair, Buff
     array[i].first = array[i-1].first;
     array[i].second = array[i-1].second;
   }
-  array[0].first = pair->first;
-  array[0].second = pair->second;
+  array[0] = pair;
 
   // adopt
   auto page_id = array[0].second;
