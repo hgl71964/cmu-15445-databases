@@ -164,6 +164,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *recipient
                                                 BufferPoolManager *buffer_pool_manager) {
 
   // during split, right half need to be moved to a new page
+  //
   auto size = BPlusTreePage::GetSize();
 
   int move_size = size - size/2;
@@ -210,7 +211,20 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items,
  * NOTE: store key&value pair continuously after deletion
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Remove(int index) {}
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Remove(int index) {
+  if (index < 0 || index >= BPlusTreePage::GetSize()) {
+    LOG_ERROR("internal Page Remove");
+  }
+
+  auto size = BPlusTreePage::GetSize();
+  for (int i = index; i < size - 1; i++) {
+    array[i].first = array[i+1].first;
+    array[i].second = array[i+1].second;
+  }
+
+  // update self
+  BPlusTreePage::SetSize(size-1);
+}
 
 /*
  * Remove the only key & value pair in internal page and return the value
