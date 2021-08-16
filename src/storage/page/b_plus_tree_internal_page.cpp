@@ -143,7 +143,7 @@ int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value,
   auto index = ValueIndex(old_value);
   BPlusTreePage::IncreaseSize(1);
 
-  for (int i = b_plus_tree_page::GetSize()-1; i > index + 1; i--) {
+  for (int i = BPlusTreePage::GetSize()-1; i > index + 1; i--) {
    array[i].key = array[i-1].key;
    array[i].value = array[i-1].value;
   }
@@ -162,6 +162,20 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *recipient,
                                                 BufferPoolManager *buffer_pool_manager) {
 
+  // during split, right half need to be moved to a new page
+  auto size = BPlusTreePage::GetSize();
+  auto new_page_id = recipient.GetPageId();
+
+  // copy 
+  for (int i = size/2; i < size; i++) {
+    // TODO
+  }
+
+  // update self
+  BPlusTreePage::SetSize(size - size/2);
+
+  // persist
+  buffer_pool_manager.FlushPageImpl(new_page_id);
 }
 
 /* Copy entries into me, starting from {items} and copy {size} entries.
@@ -169,7 +183,9 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *recipient
 * So I need to 'adopt' them by changing their parent page id, which needs to be persisted with BufferPoolManger
 */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items, int size, BufferPoolManager *buffer_pool_manager) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items, 
+                                              int size, 
+                                              BufferPoolManager *buffer_pool_manager) {
 
 for (int i = 0; i < size; i++) {
     array[i] = *(items+i);
