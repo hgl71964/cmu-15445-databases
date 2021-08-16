@@ -94,7 +94,8 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const {
  * Start the search from the second key(the first key should always be invalid)
  */
 INDEX_TEMPLATE_ARGUMENTS
-ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator) const {
+ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, 
+                                                const KeyComparator &comparator) const {
 
   // this tree does not allow duplicates key
   // TODO binary search
@@ -164,18 +165,15 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *recipient
 
   // during split, right half need to be moved to a new page
   auto size = BPlusTreePage::GetSize();
-  auto new_page_id = recipient.GetPageId();
 
-  // copy 
-  for (int i = size/2; i < size; i++) {
-    // TODO
-  }
+  int move_size = size - size/2;
+  int start_index = size/2;
+
+  // move half to 
+  recipient.CopyNFrom(&array[start_index], move_size, buffer_pool_manager);
 
   // update self
-  BPlusTreePage::SetSize(size - size/2);
-
-  // persist
-  buffer_pool_manager.FlushPageImpl(new_page_id);
+  BPlusTreePage::SetSize(size/2);
 }
 
 /* Copy entries into me, starting from {items} and copy {size} entries.
@@ -186,16 +184,21 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items, 
                                               int size, 
                                               BufferPoolManager *buffer_pool_manager) {
+  for (int i = 0; i < size; i++) {
+      array[i] = *(items+i);  // copy invalid key is fine?
 
-for (int i = 0; i < size; i++) {
-    array[i] = *(items+i);
-  }
+      // adopt
+      auto page_id = array[i].second;
+      auto *child_page = buffer_pool_manager.FetchPageImpl(page_id);
+      BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *> (child_page.GetData());
+      b_plus_child_page->SetParentPageId(BPlusTreePage::GetPageId());
+
+      // mark dirty
+      buffer_pool_manager.UnpinPageImpl(b_plus_child_page->GetPageId(), true);
+    }
+
+  // update self
   BPlusTreePage::SetSize(size);
-
-  // TODO change parent id??
-
-  // persist
-  buffer_pool_manager.FlushPageImpl(BPlusTreePage::GetPageId());
 }
 
 /*****************************************************************************
