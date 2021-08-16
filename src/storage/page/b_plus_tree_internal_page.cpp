@@ -31,10 +31,12 @@ namespace bustub {
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, int max_size) {
   BPlusTreePage::SetPageType(IndexPageType::INTERNAL_PAGE);
-  BPlusTreePage::SetSize(sizeof(array)/sizeof(MappingType)); // XXX set current size
   BPlusTreePage::SetPageId(page_id);
   BPlusTreePage::SetParentPageId(parent_id);
   BPlusTreePage::SetMaxSize(max_size);
+
+  // XXX init page set??
+  BPlusTreePage::SetSize(0); 
 }
 /*
  * Helper method to get/set the key associated with input "index"(a.k.a
@@ -44,14 +46,17 @@ INDEX_TEMPLATE_ARGUMENTS
 KeyType B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const {
   // replace with your own code
 
-  if (index == 0) {
-    LOG_ERROR("KeyAt 0");
+  if (index == 0 || index >= BPlusTreePage::GetSize()) {
+    LOG_ERROR("internal Page KeyAt");
   }
   return array[index].first;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
+  if (index == 0 || index >= BPlusTreePage::GetSize()) {
+    LOG_ERROR("internal Page SetKeyAt");
+  }
   array[index].first = key;
 }
 
@@ -75,8 +80,8 @@ int B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const {
  */
 INDEX_TEMPLATE_ARGUMENTS
 ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const {
-  if (index == 0) {
-    LOG_ERROR("ValueAt 0");
+  if (index == 0 || index >= BPlusTreePage::GetSize()) {
+    LOG_ERROR("internal Page ValueAt");
   }
   return array[index].second;
 }
@@ -93,6 +98,8 @@ INDEX_TEMPLATE_ARGUMENTS
 ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator) const {
 
   // this tree does not allow duplicates key
+  // TODO binary search
+
   for (int i = 1; i < BPlusTreePage::GetSize(); i++) {
     if (comparator(array[i].first, key) == 0) {
       return array[i].second;
