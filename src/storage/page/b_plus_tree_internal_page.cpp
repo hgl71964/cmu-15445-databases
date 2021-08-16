@@ -145,11 +145,11 @@ int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value,
   BPlusTreePage::IncreaseSize(1);
 
   for (int i = BPlusTreePage::GetSize()-1; i > index + 1; i--) {
-   array[i].key = array[i-1].key;
-   array[i].value = array[i-1].value;
+   array[i].first = array[i-1].first;
+   array[i].second = array[i-1].second;
   }
-  array[index+1].key = new_key;
-  array[index+1].value = new_value;
+  array[index+1].first = new_key;
+  array[index+1].second = new_value;
   return BPlusTreePage::GetSize();
 }
 
@@ -170,7 +170,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *recipient
   int move_size = size - size/2;
   int start_index = size/2;
 
-  // move half to 
+  // move half to; assume recipient is a new page
   recipient.CopyNFrom(&array[start_index], move_size, buffer_pool_manager);
 
   // update self
@@ -186,7 +186,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items,
                                               int size, 
                                               BufferPoolManager *buffer_pool_manager) {
   for (int i = 0; i < size; i++) {
-      array[i] = *(items+i);  // copy invalid key is fine?
+      array[i] = *(items+i);  // copy
 
       // adopt
       auto page_id = array[i].second;
@@ -196,7 +196,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items,
       buffer_pool_manager.UnpinPageImpl(b_plus_child_page->GetPageId(), true); // mark dirty
     }
 
-  // update self
+  // update self (because copy all N)
   BPlusTreePage::SetSize(size);
 }
 
@@ -231,7 +231,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Remove(int index) {
 INDEX_TEMPLATE_ARGUMENTS
 ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::RemoveAndReturnOnlyChild() {
 
-  // with assumption that there is only ONE key val pair
+  // with assumption that there is the only ONE key val pair
   auto val = array[0].second;
 
   BPlusTreePage::SetSize(0);
@@ -275,7 +275,7 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFirstToEndOf(BPlusTreeInternalPage *recipient, 
                                                       const KeyType &middle_key,
                                                       BufferPoolManager *buffer_pool_manager) {
-  
+  auto size = BPlusTreePage::GetSize();
 }
 
 /* Append an entry at the end.
@@ -307,7 +307,7 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveLastToFrontOf(BPlusTreeInternalPage *recipient, 
                                                        const KeyType &middle_key,
                                                        BufferPoolManager *buffer_pool_manager) {
-
+  auto size = BPlusTreePage::GetSize();
 }
 
 /* Append an entry at the beginning.
