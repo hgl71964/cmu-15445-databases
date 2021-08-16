@@ -231,7 +231,14 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Remove(int index) {
  * NOTE: only call this method within AdjustRoot()(in b_plus_tree.cpp)
  */
 INDEX_TEMPLATE_ARGUMENTS
-ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::RemoveAndReturnOnlyChild() { return INVALID_PAGE_ID; }
+ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::RemoveAndReturnOnlyChild() {
+
+  // with assumption that there is only ONE key val pair
+  auto val = array[0].second;
+
+  BPlusTreePage::SetSize(0);
+  return val; 
+}
 /*****************************************************************************
  * MERGE
  *****************************************************************************/
