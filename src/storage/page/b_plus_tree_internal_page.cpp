@@ -276,6 +276,8 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFirstToEndOf(BPlusTreeInternalPage *rec
                                                       const KeyType &middle_key,
                                                       BufferPoolManager *buffer_pool_manager) {
   auto size = BPlusTreePage::GetSize();
+
+  // middle_key???
 }
 
 /* Append an entry at the end.
@@ -304,10 +306,17 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyLastFrom(const MappingType &pair, Buffe
  * moved to the recipient
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveLastToFrontOf(BPlusTreeInternalPage *recipient, 
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveLastToFrontOf(BPlusTreeInternalPage *recipient,
                                                        const KeyType &middle_key,
                                                        BufferPoolManager *buffer_pool_manager) {
   auto size = BPlusTreePage::GetSize();
+
+  recipient::CopyFirstFrom(array[size], buffer_pool_manager);
+
+  // TODO middle key?
+
+  // update self
+  BPlusTreePage::IncreaseSize(-1);
 }
 
 /* Append an entry at the beginning.
@@ -319,6 +328,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyFirstFrom(const MappingType &pair, Buff
   auto size = BPlusTreePage::GetSize();
   BPlusTreePage::IncreaseSize(1);
 
+  // this assume the insert key < original key[0]
   for (int i = size; i > 0; i--) {
     array[i].first = array[i-1].first;
     array[i].second = array[i-1].second;
