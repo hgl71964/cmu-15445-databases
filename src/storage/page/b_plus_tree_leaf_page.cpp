@@ -55,6 +55,8 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_LEAF_PAGE_TYPE::KeyIndex(const KeyType &key, 
                                          const KeyComparator &comparator) const {
+  
+  // XXX duplicate keys??
   for (int i = 0; i < BPlusTreePage::GetSize(); i++) {
     if (comparator(array[i].first, key)!=-1) {
       return i;
@@ -154,7 +156,16 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyNFrom(MappingType *items, int size) {
  * If the key does not exist, then return false
  */
 INDEX_TEMPLATE_ARGUMENTS
-bool B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &key, ValueType *value, const KeyComparator &comparator) const {
+bool B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &key, ValueType *value, 
+                                        const KeyComparator &comparator) const {
+  
+  // TODO binary search
+  for (int i = 0; i < BPlusTreePage::GetSize(); i++) {
+    if (comparator(key, array[i].first) == 0) {
+      *value = array[i].second;
+      return true;
+    }
+  }
   return false;
 }
 
@@ -168,7 +179,12 @@ bool B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &key, ValueType *value, co
  * @return   page size after deletion
  */
 INDEX_TEMPLATE_ARGUMENTS
-int B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(const KeyType &key, const KeyComparator &comparator) { return 0; }
+int B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(const KeyType &key, 
+                                                      const KeyComparator &comparator) {
+  Lookup(key)
+  return BPlusTreePage::GetSize(); 
+}
+  
 
 /*****************************************************************************
  * MERGE
