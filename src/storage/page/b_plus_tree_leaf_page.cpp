@@ -70,8 +70,7 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::KeyIndex(const KeyType &key,
 INDEX_TEMPLATE_ARGUMENTS
 KeyType B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const {
   // replace with your own code
-  KeyType key{};
-  return key;
+  return array[index].first;
 }
 
 /*
@@ -81,7 +80,7 @@ KeyType B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const {
 INDEX_TEMPLATE_ARGUMENTS
 const MappingType &B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) {
   // replace with your own code
-  return array[0];
+  return array[index];
 }
 
 /*****************************************************************************
@@ -92,8 +91,20 @@ const MappingType &B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) {
  * @return  page size after insertion
  */
 INDEX_TEMPLATE_ARGUMENTS
-int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) {
-  return 0;
+int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, 
+                                       const KeyComparator &comparator) {
+  // array[keyidx].first >= key
+  auto keyidx = KeyIndex(key, comparator);
+  BPlusTreePage::IncreaseSize(1);
+
+  for (int i = BPlusTreePage::GetSize(); i>keyidx; i--) {
+    array[i].first = array[i-1].first;
+    array[i].second = array[i-1].second;
+  }
+  array[i].first = key;
+  array[i].second = value;
+
+  return BPlusTreePage::GetSize();
 }
 
 /*****************************************************************************
