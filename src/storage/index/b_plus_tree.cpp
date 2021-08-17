@@ -56,7 +56,14 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  * keys return false, otherwise return true.
  */
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) { return false; }
+bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) {
+
+  // 1. check duplication
+
+  // 2. if empty start new tree
+
+  // 3. otherwise insert into leaf page
+}
 /*
  * Insert constant key & value pair into an empty tree
  * User needs to first ask for new page from buffer pool manager(NOTICE: throw
