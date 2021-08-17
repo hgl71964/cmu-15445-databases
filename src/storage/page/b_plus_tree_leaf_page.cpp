@@ -28,18 +28,20 @@ namespace bustub {
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, int max_size) {
-  BPlusTreePage::SetPageType(IndexPageType::INTERNAL_PAGE);
-  BPlusTreePage::SetSize(sizeof(array)/sizeof(MappingType)); // XXX set current size
+  BPlusTreePage::SetPageType(IndexPageType::LEAF_PAGE);
   BPlusTreePage::SetPageId(page_id);
   BPlusTreePage::SetParentPageId(parent_id);
   BPlusTreePage::SetMaxSize(max_size);
+  BPlusTreePage::SetSize(0); 
+
+  next_page_id_ = INVALID_PAGE_ID; 
 }
 
 /**
  * Helper methods to set/get next page id
  */
 INDEX_TEMPLATE_ARGUMENTS
-page_id_t B_PLUS_TREE_LEAF_PAGE_TYPE::GetNextPageId() const { return INVALID_PAGE_ID; }
+page_id_t B_PLUS_TREE_LEAF_PAGE_TYPE::GetNextPageId() const { return next_page_id_; }
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {
@@ -51,7 +53,14 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {
  * NOTE: This method is only used when generating index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-int B_PLUS_TREE_LEAF_PAGE_TYPE::KeyIndex(const KeyType &key, const KeyComparator &comparator) const {
+int B_PLUS_TREE_LEAF_PAGE_TYPE::KeyIndex(const KeyType &key, 
+                                         const KeyComparator &comparator) const {
+  for (int i = 0; i < BPlusTreePage::GetSize(); i++) {
+    if (comparator(array[i].first, key)!=-1) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 /*
