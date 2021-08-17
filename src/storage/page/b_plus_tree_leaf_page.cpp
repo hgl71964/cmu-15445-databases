@@ -114,13 +114,36 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &valu
  * Remove half of key & value pairs from this page to "recipient" page
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(BPlusTreeLeafPage *recipient) {}
+void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(BPlusTreeLeafPage *recipient) {
+
+  // during split, right half need to be moved to a new page
+  //
+  auto size = BPlusTreePage::GetSize();
+
+  int move_size = size - size/2;
+  int start_index = size/2;
+
+  // move half to; assume recipient is a new page
+  recipient.CopyNFrom(&array[start_index], move_size);
+
+  // update self
+  BPlusTreePage::SetSize(size/2);
+
+}
 
 /*
  * Copy starting from items, and copy {size} number of elements into me.
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyNFrom(MappingType *items, int size) {}
+void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyNFrom(MappingType *items, int size) {
+
+  for (int i = 0; i < size; i++) {
+      array[i] = *(items+i);  // copy
+    }
+
+  // update self (because copy all N)
+  BPlusTreePage::SetSize(size);
+}
 
 /*****************************************************************************
  * LOOKUP
