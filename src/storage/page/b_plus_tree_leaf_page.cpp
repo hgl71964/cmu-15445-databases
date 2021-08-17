@@ -56,7 +56,6 @@ INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_LEAF_PAGE_TYPE::KeyIndex(const KeyType &key, 
                                          const KeyComparator &comparator) const {
   
-  // XXX duplicate keys??
   for (int i = 0; i < BPlusTreePage::GetSize(); i++) {
     if (comparator(array[i].first, key)!=-1) {
       return i;
@@ -99,7 +98,10 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &valu
   auto keyidx = KeyIndex(key, comparator);
   BPlusTreePage::IncreaseSize(1);
 
-  for (int i = BPlusTreePage::GetSize(); i>keyidx; i--) {
+  /**
+  NOTE: this assume the key is different from existing keys from the nodes 
+  **/
+  for (int i = BPlusTreePage::GetSize()-1; i>keyidx; i--) {
     array[i].first = array[i-1].first;
     array[i].second = array[i-1].second;
   }
@@ -142,9 +144,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyNFrom(MappingType *items, int size) {
   for (int i = 0; i < size; i++) {
       array[i] = *(items+i);  // copy
     }
-
-  // update self (because copy all N)
-  BPlusTreePage::SetSize(size);
+  BPlusTreePage::SetSize(size); // update self (because copy all N)
 }
 
 /*****************************************************************************
@@ -181,7 +181,28 @@ bool B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &key, ValueType *value,
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(const KeyType &key, 
                                                       const KeyComparator &comparator) {
-  Lookup(key)
+
+  /**
+  NOTE: assume the keys are unique
+  **/
+  int id = -1;
+  auto size = BPlusTreePage::GetSize();
+  for (int i = 0; i < size; i++) {
+    if (comparator(key, array[i].first) == 0) {
+      id = i;
+      break;
+    }
+  }
+
+  if (id != -1) {
+    for (int i = id; i < size-1; i++) {
+      array[i].first = array[i+1].first;
+      array[i].second = array[i+1].second;
+    }
+
+    // update self
+    BPlusTreePage::IncreaseSize(-1);
+  }
   return BPlusTreePage::GetSize(); 
 }
   
