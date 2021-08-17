@@ -206,7 +206,6 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(const KeyType &key,
   }
   return BPlusTreePage::GetSize(); 
 }
-  
 
 /*****************************************************************************
  * MERGE
