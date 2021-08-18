@@ -41,8 +41,34 @@ bool BPLUSTREE_TYPE::IsEmpty() const { return size_==0; }
  * @return : true means key exists
  */
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *transaction) {
-  return false;
+bool BPLUSTREE_TYPE::GetValue(const KeyType &key, 
+                              std::vector<ValueType> *result, 
+                              Transaction *transaction) {
+  if (IsEmpty()) {
+    return false;
+  }
+
+  Page *page;
+  BPlusTreePage *page_node;
+  page = buffer_pool_manager_->FetchPageImpl(root_page_id_);
+  page_node = reinterpret_cast<BPlusTreePage *> (page);
+
+  // recursively search
+  while ((!page_node->IsLeafPage())) {
+    if (page_node->GetSize()==0) {
+      return false;
+    }
+
+    // XXX data key must exist in internal node??
+    auto val = page_node.Lookup(key, comparator_);
+
+    if (val == INVALID_PAGE_ID) {
+      return false;
+    }
+    page = buffer_pool_manager_->FetchPageImpl(val);
+    page_node = reinterpret_cast<BPlusTreePage *> (page);
+  }
+
 }
 
 /*****************************************************************************
