@@ -53,12 +53,12 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
 
   auto *leaf_page_node = reinterpret_cast<BPlusTreeLeafPage *> (page->GetData());
 
-  ValueType *val;
-  bool ok = leaf_page_node->Lookup(key, val, comparator_);
+  ValueType val;
+  bool ok = leaf_page_node->Lookup(key, &val, comparator_);
 
   // result.resize(1);
   if (ok) {
-    result->push_back(std::move(*val));
+    result->push_back(std::move(val));
   }
   return ok;
 }
