@@ -105,7 +105,7 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key,
       return array[i].second;
     }
   }
-  return INVALID_PAGE_ID; // XXX cannot find
+  return array[BPlusTreePage::GetSize()-1].second; // XXX cannot find
 }
 
 /*****************************************************************************
