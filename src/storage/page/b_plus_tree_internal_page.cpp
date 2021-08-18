@@ -102,7 +102,7 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key,
 
   for (int i = 1; i < BPlusTreePage::GetSize(); i++) {
     if (comparator(array[i].first, key) != -1) {
-      return array[i].second;
+      return array[i-1].second;
     }
   }
   return array[BPlusTreePage::GetSize()-1].second; // XXX cannot find
