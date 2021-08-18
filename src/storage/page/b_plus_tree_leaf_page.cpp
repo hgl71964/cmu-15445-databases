@@ -61,7 +61,7 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::KeyIndex(const KeyType &key,
       return i;
     }
   }
-  return -1;
+  return -1; // XXX??
 }
 
 /*
@@ -94,8 +94,14 @@ const MappingType &B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) {
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, 
                                        const KeyComparator &comparator) {
-  // array[keyidx].first >= key
-  auto keyidx = KeyIndex(key, comparator);
+  int keyidx = 0;
+  for (int i = 0; i < BPlusTreePage::GetSize(); i++) {
+    if (comparator(array[i].first, key) == -1) {
+      keyidx++;
+    } else {
+      break;
+    }
+  }
   BPlusTreePage::IncreaseSize(1);
 
   /**
@@ -105,8 +111,8 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &valu
     array[i].first = array[i-1].first;
     array[i].second = array[i-1].second;
   }
-  array[i].first = key;
-  array[i].second = value;
+  array[keyidx].first = key;
+  array[keyidx].second = value;
 
   return BPlusTreePage::GetSize();
 }

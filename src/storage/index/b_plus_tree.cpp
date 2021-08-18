@@ -91,6 +91,28 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
 
+  page_id_t page_id;
+  auto *page = buffer_pool_manager_->NewPageImpl(&page_id);
+
+  if (page == nullptr) {
+    throw Exception(ExceptionType::OUT_OF_MEMORY, "out of mem");
+  }
+
+  // mark this as root page id
+  root_page_id_ = page_id;
+
+  // init new root (as leaf)
+  auto *root_node = reinterpret_cast<BPlusTreeLeafPage *> (page->GetData());
+  root_node->Init(page_id, INVALID_PAGE_ID, internal_max_size_);
+
+  // insert; do not need to handle duplicate
+  root_node->Insert(key, value, comparator_);
+
+  // update header page (meta data)
+  UpdateRootPageId(); // TODO
+
+  // done using??
+  buffer_pool_manager_->UnpinPageImpl(root_node->GetPageId(), true);
 }
 
 /*
@@ -254,7 +276,7 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
 
   // root and leaf
   if (page_node->IsLeafPage()) {
-    buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId());
+    buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId(), false);
     return nullptr;
   }
 
@@ -268,12 +290,12 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
 
     // if val is INVALID
     if (val == INVALID_PAGE_ID) {
-      buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId());
+      buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId(), false);
       return nullptr;
     }
 
     // unpin current page and find next
-    buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId());
+    buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId(), false);
     page = buffer_pool_manager_->FetchPageImpl(val);
     page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
   }
