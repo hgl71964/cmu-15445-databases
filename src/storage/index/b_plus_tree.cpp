@@ -45,16 +45,20 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
                               std::vector<ValueType> *result, 
                               Transaction *transaction) {
 
-  FindLeafPage(key, false);
+  Page* page = FindLeafPage(key, false);
 
-  // now page_node must be leaf
-  ValueType *val_res;
-  BPlusTreeLeafPage *leaf_page_node;
-  leaf_page_node = reinterpret_cast<BPlusTreeLeafPage *> (page_node);
-  bool ok = leaf_page_node.Lookup(key, val_res, comparator_);
+  if (page == nullptr) {
+    return false;
+  }
 
+  auto *leaf_page_node = reinterpret_cast<BPlusTreeLeafPage *> (page->GetData());
+
+  ValueType *val;
+  bool ok = leaf_page_node->Lookup(key, val, comparator_);
+
+  // result.resize(1);
   if (ok) {
-    result->push_back(std::move(*val_res));
+    result->push_back(std::move(*val));
   }
   return ok;
 }
@@ -234,13 +238,15 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(); }
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   //throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
-
   if (IsEmpty()) {
-    return false;
+    return nullptr;
   }
 
   Page *page;
   BPlusTreePage *page_node;
+  ValueType val;
+
+  // root
   page = buffer_pool_manager_->FetchPageImpl(root_page_id_);
   page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
 
@@ -250,24 +256,32 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
     return nullptr;
   }
 
-  // recursively search
-  while ((!page_node->IsLeafPage())) {
+  // if root ok, then recursively search
+  while (!page_node->IsLeafPage()) {
+
+    // if no size
     if (page_node->GetSize()==0) {
       buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId());
       return nullptr;
     }
   
-    // XXX data key must exist in internal node??
-    auto val = (reinterpret_cast<BPlusTreeInternalPage *> (page_node))->Lookup(
-                                                key, comparator_);
+    // data key must exist in internal node
+    auto *internal_page_node = reinterpret_cast<BPlusTreeInternalPage *> (page_node);
+    val = (leftMost)? internal_page_node->ValueAt(0)
+                    :internal_page_node->Lookup(key, comparator_);
 
+    // if val is INVALID
     if (val == INVALID_PAGE_ID) {
       buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId());
       return nullptr;
     }
+
+    // unpin current page and find next
+    buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId());
     page = buffer_pool_manager_->FetchPageImpl(val);
     page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
   }
+  return page;
 }
 
 /*
