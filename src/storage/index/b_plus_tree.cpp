@@ -31,7 +31,7 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
  * Helper function to decide whether current b+tree is empty
  */
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::IsEmpty() const { return size_==0; }
+bool BPLUSTREE_TYPE::IsEmpty() const { return root_page_id_==INVALID_PAGE_ID; }
 /*****************************************************************************
  * SEARCH
  *****************************************************************************/
@@ -82,6 +82,7 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 
   // 3. otherwise insert into leaf page
 }
+
 /*
  * Insert constant key & value pair into an empty tree
  * User needs to first ask for new page from buffer pool manager(NOTICE: throw
@@ -124,7 +125,17 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
  * keys return false, otherwise return true.
  */
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction) {
+bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, 
+                                    const ValueType &value,   
+                                    Transaction *transaction) {
+  
+  auto *page = FindLeafPage(key, false);
+  if (page == nullptr) {
+    LOG_ERROR("b+ tree - InsertIntoLeaf");
+    throw Exception(ExceptionType::INVALID, "b+ tree - InsertIntoLeaf");
+  }
+
+  // TODO
   return false;
 }
 
@@ -151,8 +162,12 @@ N *BPLUSTREE_TYPE::Split(N *node) {
  * recursively if necessary.
  */
 INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &key, BPlusTreePage *new_node,
-                                      Transaction *transaction) {}
+void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, 
+                                      const KeyType &key, 
+                                      BPlusTreePage *new_node,
+                                      Transaction *transaction) {
+
+}
 
 /*****************************************************************************
  * REMOVE
@@ -274,11 +289,11 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   page = buffer_pool_manager_->FetchPageImpl(root_page_id_);
   page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
 
-  // root and leaf
-  if (page_node->IsLeafPage()) {
-    buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId(), false);
-    return nullptr;
-  }
+  // root and leaf, then return directly
+  //if (page_node->IsLeafPage()) {
+  //  buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId(), false);
+  //  return nullptr;
+  //}
 
   // if root ok, then recursively search
   while (!page_node->IsLeafPage()) {
@@ -288,7 +303,7 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
     val = (leftMost)? internal_page_node->ValueAt(0)
                     :internal_page_node->Lookup(key, comparator_);
 
-    // if val is INVALID
+    // if val is INVALID XXX
     if (val == INVALID_PAGE_ID) {
       buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId(), false);
       return nullptr;
