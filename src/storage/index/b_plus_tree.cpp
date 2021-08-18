@@ -103,15 +103,15 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
 
   // init new root (as leaf)
   auto *root_node = reinterpret_cast<BPlusTreeLeafPage *> (page->GetData());
-  root_node->Init(page_id, INVALID_PAGE_ID, internal_max_size_);
+  root_node->Init(page_id, INVALID_PAGE_ID, leaf_max_size_);
 
   // insert; do not need to handle duplicate
   root_node->Insert(key, value, comparator_);
 
-  // update header page (meta data)
-  UpdateRootPageId(); // TODO
+  // insert header page (meta data) (start a new tree)
+  UpdateRootPageId(true);
 
-  // done using??
+  // done using
   buffer_pool_manager_->UnpinPageImpl(root_node->GetPageId(), true);
 }
 
