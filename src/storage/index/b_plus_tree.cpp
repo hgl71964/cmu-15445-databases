@@ -89,7 +89,9 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
  * tree's root page id and insert entry directly into leaf page.
  */
 INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {}
+void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
+
+}
 
 /*
  * Insert constant key & value pair into leaf page
@@ -259,12 +261,6 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   // if root ok, then recursively search
   while (!page_node->IsLeafPage()) {
 
-    // if no size
-    if (page_node->GetSize()==0) {
-      buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId());
-      return nullptr;
-    }
-  
     // data key must exist in internal node
     auto *internal_page_node = reinterpret_cast<BPlusTreeInternalPage *> (page_node);
     val = (leftMost)? internal_page_node->ValueAt(0)
