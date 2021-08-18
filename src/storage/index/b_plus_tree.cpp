@@ -44,31 +44,19 @@ INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::GetValue(const KeyType &key, 
                               std::vector<ValueType> *result, 
                               Transaction *transaction) {
-  if (IsEmpty()) {
-    return false;
+
+  FindLeafPage(key, false);
+
+  // now page_node must be leaf
+  ValueType *val_res;
+  BPlusTreeLeafPage *leaf_page_node;
+  leaf_page_node = reinterpret_cast<BPlusTreeLeafPage *> (page_node);
+  bool ok = leaf_page_node.Lookup(key, val_res, comparator_);
+
+  if (ok) {
+    result->push_back(std::move(*val_res));
   }
-
-  Page *page;
-  BPlusTreePage *page_node;
-  page = buffer_pool_manager_->FetchPageImpl(root_page_id_);
-  page_node = reinterpret_cast<BPlusTreePage *> (page);
-
-  // recursively search
-  while ((!page_node->IsLeafPage())) {
-    if (page_node->GetSize()==0) {
-      return false;
-    }
-
-    // XXX data key must exist in internal node??
-    auto val = page_node.Lookup(key, comparator_);
-
-    if (val == INVALID_PAGE_ID) {
-      return false;
-    }
-    page = buffer_pool_manager_->FetchPageImpl(val);
-    page_node = reinterpret_cast<BPlusTreePage *> (page);
-  }
-
+  return ok;
 }
 
 /*****************************************************************************
@@ -245,7 +233,41 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(); }
  */
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
-  throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
+  //throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
+
+  if (IsEmpty()) {
+    return false;
+  }
+
+  Page *page;
+  BPlusTreePage *page_node;
+  page = buffer_pool_manager_->FetchPageImpl(root_page_id_);
+  page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
+
+  // root and leaf
+  if (page_node->IsLeafPage()) {
+    buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId());
+    return nullptr;
+  }
+
+  // recursively search
+  while ((!page_node->IsLeafPage())) {
+    if (page_node->GetSize()==0) {
+      buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId());
+      return nullptr;
+    }
+  
+    // XXX data key must exist in internal node??
+    auto val = (reinterpret_cast<BPlusTreeInternalPage *> (page_node))->Lookup(
+                                                key, comparator_);
+
+    if (val == INVALID_PAGE_ID) {
+      buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId());
+      return nullptr;
+    }
+    page = buffer_pool_manager_->FetchPageImpl(val);
+    page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
+  }
 }
 
 /*

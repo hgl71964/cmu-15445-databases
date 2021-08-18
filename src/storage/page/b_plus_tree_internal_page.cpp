@@ -191,7 +191,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items,
       // adopt
       auto page_id = array[i].second;
       auto *child_page = buffer_pool_manager.FetchPageImpl(page_id);
-      BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *> (child_page.GetData());
+      BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *> (child_page->GetData());
       b_plus_child_page->SetParentPageId(BPlusTreePage::GetPageId());
       buffer_pool_manager.UnpinPageImpl(b_plus_child_page->GetPageId(), true); // mark dirty
     }
@@ -293,7 +293,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyLastFrom(const MappingType &pair, Buffe
   // adopt
   auto page_id = array[size].second;
   auto *child_page = buffer_pool_manager.FetchPageImpl(page_id);
-  BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *> (child_page.GetData());
+  BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *> (child_page->GetData());
   b_plus_child_page->SetParentPageId(BPlusTreePage::GetPageId());
   buffer_pool_manager.UnpinPageImpl(b_plus_child_page->GetPageId(), true); // mark dirty
 }
@@ -338,7 +338,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyFirstFrom(const MappingType &pair, Buff
   // adopt
   auto page_id = array[0].second;
   auto *child_page = buffer_pool_manager.FetchPageImpl(page_id);
-  BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *> (child_page.GetData());
+  BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *> (child_page->GetData());
   b_plus_child_page->SetParentPageId(BPlusTreePage::GetPageId());
   buffer_pool_manager.UnpinPageImpl(b_plus_child_page->GetPageId(), true); // mark dirty
 }
