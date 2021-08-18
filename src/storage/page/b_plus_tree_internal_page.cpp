@@ -101,7 +101,7 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key,
   // TODO binary search
 
   for (int i = 1; i < BPlusTreePage::GetSize(); i++) {
-    if (comparator(array[i].first, key) != 1) {
+    if (comparator(array[i].first, key) != -1) {
       return array[i].second;
     }
   }
