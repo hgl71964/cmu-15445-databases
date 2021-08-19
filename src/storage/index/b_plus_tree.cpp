@@ -60,6 +60,9 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
   if (ok) {
     result->push_back(std::move(val));
   }
+
+  // done using
+  buffer_pool_manager_->UnpinPageImpl(leaf_page_node->GetPageId(), false);
   return ok;
 }
 
@@ -131,12 +134,27 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
   
   auto *page = FindLeafPage(key, false);
   if (page == nullptr) {
-    LOG_ERROR("b+ tree - InsertIntoLeaf");
     throw Exception(ExceptionType::INVALID, "b+ tree - InsertIntoLeaf");
   }
 
-  // TODO
-  return false;
+  // check if duplicate
+  auto *leaf_page_node = reinterpret_cast<BPlusTreeLeafPage *> (page->GetData());
+  ValueType val;
+  bool exist = leaf_page_node->Lookup(key, &val, comparator_);
+  if (exist) {
+    // try to insert deplicate key
+    buffer_pool_manager_->UnpinPageImpl(leaf_page_node->GetPageId(), false);
+    return false;
+  }
+
+  // insert
+  leaf_page_node->Insert(key, val, comparator_);
+
+  // if full handle redistribution???? TODO
+  
+  // dirty
+  buffer_pool_manager_->UnpinPageImpl(leaf_page_node->GetPageId(), true);
+  return true;
 }
 
 /*
