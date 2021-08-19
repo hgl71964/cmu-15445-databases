@@ -134,7 +134,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(BPlusTreeLeafPage *recipient) {
   int start_index = size/2;
 
   // move half to; assume recipient is a new page
-  recipient.CopyNFrom(&array[start_index], move_size);
+  recipient->CopyNFrom(&array[start_index], move_size);
 
   // update self
   BPlusTreePage::SetSize(size/2);

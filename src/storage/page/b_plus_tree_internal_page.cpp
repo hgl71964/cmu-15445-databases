@@ -171,7 +171,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *recipient
   int start_index = size/2;
 
   // move half to; assume recipient is a new page
-  recipient.CopyNFrom(&array[start_index], move_size, buffer_pool_manager);
+  recipient->CopyNFrom(&array[start_index], move_size, buffer_pool_manager);
 
   // update self
   BPlusTreePage::SetSize(size/2);
