@@ -105,7 +105,7 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &valu
   BPlusTreePage::IncreaseSize(1);
 
   /**
-  NOTE: this assume the key is different from existing keys from the nodes 
+  NOTE: unique key
   **/
   for (int i = BPlusTreePage::GetSize()-1; i>keyidx; i--) {
     array[i].first = array[i-1].first;

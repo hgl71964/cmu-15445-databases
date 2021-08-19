@@ -61,7 +61,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
     result->push_back(std::move(val));
   }
 
-  // done using
+  // done using; not dirty
   buffer_pool_manager_->UnpinPageImpl(leaf_page_node->GetPageId(), false);
   return ok;
 }
@@ -100,27 +100,17 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
 
-  page_id_t page_id;
-  auto *page = buffer_pool_manager_->NewPageImpl(&page_id);
+  // ask for new root page
+  auto *page = new_root(true);
 
-  if (page == nullptr) {
-    throw Exception(ExceptionType::OUT_OF_MEMORY, "start new tree out of mem");
-  }
-
-  // mark this as root page id
-  root_page_id_ = page_id;
-
-  // init new root (as leaf)
+  // init new tree (as leaf)
   auto *root_node = reinterpret_cast<BPlusTreeLeafPage *> (page->GetData());
   root_node->Init(page_id, INVALID_PAGE_ID, leaf_max_size_);
 
   // insert; do not need to handle duplicate
   root_node->Insert(key, value, comparator_);
 
-  // insert header page (meta data) 
-  UpdateRootPageId(true); // true for start a new tree
-
-  // done using root page
+  // done using; mark dirty
   buffer_pool_manager_->UnpinPageImpl(root_node->GetPageId(), true);
 }
 
@@ -155,9 +145,19 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
   // insert
   leaf_page_node->Insert(key, val, comparator_);
 
-  // if full handle redistribution???? TODO
+  // if full, split
+  if (leaf_page_node->GetMaxSize() == leaf_page_node->GetSize()) {
+
+    auto* new_leaf_page_node = Split(*leaf_page_node);
+
+    auto partition_key = new_leaf_page_node->KeyAt(0); // partition key
+
+    // recursively handle parent
+    InsertIntoParent(leaf_page_node, partition_key, 
+                      new_leaf_page_node, transaction);
+  }
   
-  // dirty
+  // done using; mark dirty
   buffer_pool_manager_->UnpinPageImpl(leaf_page_node->GetPageId(), true);
   return true;
 }
@@ -184,7 +184,7 @@ N *BPLUSTREE_TYPE::Split(N *node) {
   N *new_page_node = reinterpret_cast<N *> (page->GetData());
   node->MoveHalfTo(new_page_node);
 
-  // still using for caller, dont Unpin
+  // new page wull be used by caller, dont Unpin
   return new_page_node;
 }
 
@@ -204,6 +204,30 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
                                       Transaction *transaction) {
   // get parent node
   auto old_node_parent_id = old_node->GetParentPageId();
+
+  // propagate to root
+  if (old_node_parent_id == INVALID_PAGE_ID) {
+
+    page_id_t page_id;
+    auto *page = buffer_pool_manager_->NewPageImpl(&page_id);
+
+    if (page == nullptr) {
+      throw Exception(ExceptionType::OUT_OF_MEMORY, "start new tree out of mem");
+    }
+
+    // mark this as root page id
+    root_page_id_ = page_id;
+
+    // init new root (as leaf)
+    auto *root_node = reinterpret_cast<BPlusTreeLeafPage *> (page->GetData());
+    root_node->Init(page_id, INVALID_PAGE_ID, leaf_max_size_);
+
+
+
+    return;
+  }
+
+  
   auto *page = buffer_pool_manager_->FetchPageImpl(old_node_parent_id);
   auto *parent_page_node = reinterpret_cast<BPlusTreeInternalPage *> (page);
 
@@ -316,6 +340,25 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(); }
 /*****************************************************************************
  * UTILITIES AND DEBUG
  *****************************************************************************/
+
+INDEX_TEMPLATE_ARGUMENTS
+Page *BPLUSTREE_TYPE::new_root(const bool new_tree) {
+
+  page_id_t page_id;
+  auto *page = buffer_pool_manager_->NewPageImpl(&page_id);
+
+  if (page == nullptr) {
+    throw Exception(ExceptionType::OUT_OF_MEMORY, "start new tree out of mem");
+  }
+
+  // mark this as root page id
+  root_page_id_ = page_id;
+
+  // insert header page (meta data) 
+  UpdateRootPageId(new_tree); // true for start a new tree
+
+  return page;
+}
 /*
  * Find leaf page containing particular key, if leftMost flag == true, find
  * the left most leaf page
