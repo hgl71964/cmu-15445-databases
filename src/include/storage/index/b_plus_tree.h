@@ -82,7 +82,7 @@ class BPlusTree {
  private:
 
   // self
-  Page *new_root(const bool new_tree);
+  Page *new_root(page_id_t *page_id, const bool new_tree);
   // self
 
   void StartNewTree(const KeyType &key, const ValueType &value);

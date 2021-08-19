@@ -62,7 +62,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
   }
 
   // done using; not dirty
-  buffer_pool_manager_->UnpinPageImpl(leaf_page_node->GetPageId(), false);
+  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
   return ok;
 }
 
@@ -111,7 +111,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   root_node->Insert(key, value, comparator_);
 
   // done using; mark dirty
-  buffer_pool_manager_->UnpinPageImpl(root_node->GetPageId(), true);
+  buffer_pool_manager_->UnpinPage(root_node->GetPageId(), true);
 }
 
 /*
@@ -138,7 +138,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
   bool exist = leaf_page_node->Lookup(key, &val, comparator_);
   if (exist) {
     // try to insert deplicate key
-    buffer_pool_manager_->UnpinPageImpl(leaf_page_node->GetPageId(), false);
+    buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
     return false;
   }
 
@@ -157,11 +157,11 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
                       new_leaf_page_node, transaction);
 
     // done using; mark dirty
-    buffer_pool_manager_->UnpinPageImpl(new_leaf_page_node->GetPageId(), true);
+    buffer_pool_manager_->UnpinPage(new_leaf_page_node->GetPageId(), true);
   }
   
   // done using; mark dirty
-  buffer_pool_manager_->UnpinPageImpl(leaf_page_node->GetPageId(), true);
+  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
   return true;
 }
 
@@ -178,7 +178,7 @@ N *BPLUSTREE_TYPE::Split(N *node) {
 
   // new page
   page_id_t page_id;
-  auto *page = buffer_pool_manager_->NewPageImpl(&page_id);
+  auto *page = buffer_pool_manager_->NewPage(&page_id);
   if (page == nullptr) {
     throw Exception(ExceptionType::OUT_OF_MEMORY, "Split out of mem");
   }
@@ -225,12 +225,12 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
     new_node->SetParentPageId(*page_id);
 
     // done using; dirty
-    buffer_pool_manager_->UnpinPageImpl(root_node->GetPageId(), true);
+    buffer_pool_manager_->UnpinPage(root_node->GetPageId(), true);
     return;
   }
 
   // else fetch parent page
-  auto *page = buffer_pool_manager_->FetchPageImpl(parent_id);
+  auto *page = buffer_pool_manager_->FetchPage(parent_id);
   auto *parent_page_node = reinterpret_cast<B_PLUS_TREE_INTERNAL_PAGE_TYPE *> (page->GetData());
 
   // insert into parent, adopt
@@ -245,11 +245,11 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
     auto partition_key = new_parent_page_node->KeyAt(0); // partition key
     InsertIntoParent(parent_page_node, partition_key, 
                       new_parent_page_node, transaction);
-    buffer_pool_manager_->UnpinPageImpl(new_parent_page_node->GetPageId(), true);
+    buffer_pool_manager_->UnpinPage(new_parent_page_node->GetPageId(), true);
   }
 
   // done using; mark dirty
-  buffer_pool_manager_->UnpinPageImpl(parent_page_node->GetPageId(), true);
+  buffer_pool_manager_->UnpinPage(parent_page_node->GetPageId(), true);
 }
 
 /*****************************************************************************
@@ -357,7 +357,7 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(); }
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::new_root(page_id_t *page_id, const bool new_tree) {
 
-  auto *page = buffer_pool_manager_->NewPageImpl(page_id);
+  auto *page = buffer_pool_manager_->NewPage(page_id);
 
   if (page == nullptr) {
     throw Exception(ExceptionType::OUT_OF_MEMORY, "start new tree out of mem");
@@ -387,7 +387,7 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   ValueType val;
 
   // root
-  page = buffer_pool_manager_->FetchPageImpl(root_page_id_);
+  page = buffer_pool_manager_->FetchPage(root_page_id_);
   page_node = reinterpret_cast<BPLUSTREE_TYPE *> (page->GetData());
 
   // if  root and leaf - new tree - return directly
@@ -401,13 +401,13 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
 
     // if val is INVALID XXX
     if (val == INVALID_PAGE_ID) {
-      buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId(), false);
+      buffer_pool_manager_->UnpinPage(page_node->GetPageId(), false);
       return nullptr;
     }
 
     // unpin current page and find next
-    buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId(), false);
-    page = buffer_pool_manager_->FetchPageImpl(val);
+    buffer_pool_manager_->UnpinPage(page_node->GetPageId(), false);
+    page = buffer_pool_manager_->FetchPage(val);
     page_node = reinterpret_cast<BPLUSTREE_TYPE *> (page->GetData());
   }
   return page;
