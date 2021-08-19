@@ -79,11 +79,16 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) {
 
-  // 1. check duplication
+  // 1. if empty start new tree
+  if (IsEmpty()) {
+    StartNewTree(key, value);
+    return true;
+  }
 
-  // 2. if empty start new tree
+  // 2. insert - ok = no duplicate
+  bool ok = InsertIntoLeaf(key, value, transaction);
 
-  // 3. otherwise insert into leaf page
+  return ok;
 }
 
 /*
@@ -115,7 +120,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   // insert header page (meta data) 
   UpdateRootPageId(true); // true for start a new tree
 
-  // done using
+  // done using root page
   buffer_pool_manager_->UnpinPageImpl(root_node->GetPageId(), true);
 }
 
@@ -179,9 +184,7 @@ N *BPLUSTREE_TYPE::Split(N *node) {
   N *new_page_node = reinterpret_cast<N *> (page->GetData());
   node->MoveHalfTo(new_page_node);
 
-  // still using? XXX
-  // buffer_pool_manager_->UnpinPageImpl(page_id, true);
-
+  // still using for caller, dont Unpin
   return new_page_node;
 }
 
@@ -199,7 +202,17 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
                                       const KeyType &key, 
                                       BPlusTreePage *new_node,
                                       Transaction *transaction) {
+  // get parent node
+  auto old_node_parent_id = old_node->GetParentPageId();
+  auto *page = buffer_pool_manager_->FetchPageImpl(old_node_parent_id);
+  auto *parent_page_node = reinterpret_cast<BPlusTreeInternalPage *> (page);
 
+  // insert into parent TODO? what is key?
+  auto maximum_left 
+  parent_page_node->InsertNodeAfter()
+
+  //
+  buffer_pool_manager_->UnpinPageImpl(?, true);
 }
 
 /*****************************************************************************
