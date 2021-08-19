@@ -109,8 +109,8 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   // insert; do not need to handle duplicate
   root_node->Insert(key, value, comparator_);
 
-  // insert header page (meta data) (start a new tree)
-  UpdateRootPageId(true);
+  // insert header page (meta data) 
+  UpdateRootPageId(true); // true for start a new tree
 
   // done using
   buffer_pool_manager_->UnpinPageImpl(root_node->GetPageId(), true);
@@ -289,12 +289,7 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   page = buffer_pool_manager_->FetchPageImpl(root_page_id_);
   page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
 
-  // root and leaf, then return directly
-  //if (page_node->IsLeafPage()) {
-  //  buffer_pool_manager_->UnpinPageImpl(page_node->GetPageId(), false);
-  //  return nullptr;
-  //}
-
+  // if  root and leaf - new tree - return directly
   // if root ok, then recursively search
   while (!page_node->IsLeafPage()) {
 
