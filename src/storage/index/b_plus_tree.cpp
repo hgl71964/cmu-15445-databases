@@ -104,7 +104,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   auto *root_page = new_root(page_id, true);
 
   // init new tree (as leaf)
-  auto *root_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *> (page->GetData());
+  auto *root_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *> (root_page->GetData());
   root_node->Init(*page_id, INVALID_PAGE_ID, leaf_max_size_);
 
   // insert; do not need to handle duplicate
@@ -157,11 +157,11 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
                       new_leaf_page_node, transaction);
 
     // done using; mark dirty
-    buffer_pool_manager_->unpinpageimpl(new_leaf_page_node->getpageid(), true);
+    buffer_pool_manager_->UnpinPageImpl(new_leaf_page_node->GetPageId(), true);
   }
   
   // done using; mark dirty
-  buffer_pool_manager_->unpinpageimpl(leaf_page_node->getpageid(), true);
+  buffer_pool_manager_->UnpinPageImpl(leaf_page_node->GetPageId(), true);
   return true;
 }
 
@@ -215,7 +215,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
     auto *root_page = new_root(page_id, false);
 
     // init new root (as internal)
-    auto *root_node = reinterpret_cast<B_PLUS_TREE_INTERNAL_PAGE_TYPE *> (page->GetData());
+    auto *root_node = reinterpret_cast<B_PLUS_TREE_INTERNAL_PAGE_TYPE *> (root_page->GetData());
     root_node->Init(*page_id, INVALID_PAGE_ID, internal_max_size_);
 
     // adopt

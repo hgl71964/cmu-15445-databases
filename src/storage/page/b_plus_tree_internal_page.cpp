@@ -190,10 +190,10 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items,
 
       // adopt
       auto page_id = array[i].second;
-      auto *child_page = buffer_pool_manager.FetchPageImpl(page_id);
+      auto *child_page = buffer_pool_manager->FetchPageImpl(page_id);
       BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *> (child_page->GetData());
       b_plus_child_page->SetParentPageId(BPlusTreePage::GetPageId());
-      buffer_pool_manager.UnpinPageImpl(b_plus_child_page->GetPageId(), true); // mark dirty
+      buffer_pool_manager->UnpinPageImpl(b_plus_child_page->GetPageId(), true); // mark dirty
     }
 
   // update self (because copy all N)
@@ -292,10 +292,10 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyLastFrom(const MappingType &pair, Buffe
 
   // adopt
   auto page_id = array[size].second;
-  auto *child_page = buffer_pool_manager.FetchPageImpl(page_id);
+  auto *child_page = buffer_pool_manager->FetchPageImpl(page_id);
   BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *> (child_page->GetData());
   b_plus_child_page->SetParentPageId(BPlusTreePage::GetPageId());
-  buffer_pool_manager.UnpinPageImpl(b_plus_child_page->GetPageId(), true); // mark dirty
+  buffer_pool_manager->UnpinPageImpl(b_plus_child_page->GetPageId(), true); // mark dirty
 }
 
 /*
@@ -309,14 +309,6 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveLastToFrontOf(BPlusTreeInternalPage *recipient,
                                                        const KeyType &middle_key,
                                                        BufferPoolManager *buffer_pool_manager) {
-  auto size = BPlusTreePage::GetSize();
-
-  recipient::CopyFirstFrom(array[size], buffer_pool_manager);
-
-  // TODO middle key?
-
-  // update self
-  BPlusTreePage::IncreaseSize(-1);
 }
 
 /* Append an entry at the beginning.
@@ -337,10 +329,10 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyFirstFrom(const MappingType &pair, Buff
 
   // adopt
   auto page_id = array[0].second;
-  auto *child_page = buffer_pool_manager.FetchPageImpl(page_id);
+  auto *child_page = buffer_pool_manager->FetchPageImpl(page_id);
   BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *> (child_page->GetData());
   b_plus_child_page->SetParentPageId(BPlusTreePage::GetPageId());
-  buffer_pool_manager.UnpinPageImpl(b_plus_child_page->GetPageId(), true); // mark dirty
+  buffer_pool_manager->UnpinPageImpl(b_plus_child_page->GetPageId(), true); // mark dirty
 }
 
 // valuetype for internalNode should be page id_t
