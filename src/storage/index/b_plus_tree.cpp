@@ -99,7 +99,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   auto *page = buffer_pool_manager_->NewPageImpl(&page_id);
 
   if (page == nullptr) {
-    throw Exception(ExceptionType::OUT_OF_MEMORY, "out of mem");
+    throw Exception(ExceptionType::OUT_OF_MEMORY, "start new tree out of mem");
   }
 
   // mark this as root page id
@@ -167,7 +167,22 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 N *BPLUSTREE_TYPE::Split(N *node) {
-  return nullptr;
+
+  // new page
+  page_id_t page_id;
+  auto *page = buffer_pool_manager_->NewPageImpl(&page_id);
+  if (page == nullptr) {
+    throw Exception(ExceptionType::OUT_OF_MEMORY, "Split out of mem");
+  }
+
+  // move key & val pairs
+  N *new_page_node = reinterpret_cast<N *> (page->GetData());
+  node->MoveHalfTo(new_page_node);
+
+  // still using? XXX
+  // buffer_pool_manager_->UnpinPageImpl(page_id, true);
+
+  return new_page_node;
 }
 
 /*

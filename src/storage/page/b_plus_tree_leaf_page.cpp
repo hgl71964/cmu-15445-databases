@@ -138,7 +138,6 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(BPlusTreeLeafPage *recipient) {
 
   // update self
   BPlusTreePage::SetSize(size/2);
-
 }
 
 /*
