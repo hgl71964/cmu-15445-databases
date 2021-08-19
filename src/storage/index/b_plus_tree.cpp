@@ -206,10 +206,10 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
                                       BPlusTreePage *new_node,
                                       Transaction *transaction) {
   // get parent node id
-  auto old_node_parent_id = old_node->GetParentPageId();
+  auto parent_id = old_node->GetParentPageId();
 
   // root - terminate recursion
-  if (old_node_parent_id == INVALID_PAGE_ID) {
+  if (parent_id == INVALID_PAGE_ID) {
 
     page_id_t *page_id;
     auto *root_page = new_root(page_id, false);
@@ -221,30 +221,30 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
     // adopt
     root_node->PopulateNewRoot(old_node->GetPageId(), key, 
                                     new_node->GetPageId());
+    old_node->SetParentPageId(*page_id);
+    new_node->SetParentPageId(*page_id);
+
     // done using; dirty
     buffer_pool_manager_->UnpinPageImpl(root_node->GetPageId(), true);
     return;
   }
 
-  auto *page = buffer_pool_manager_->FetchPageImpl(old_node_parent_id);
+  // else fetch parent page
+  auto *page = buffer_pool_manager_->FetchPageImpl(parent_id);
   auto *parent_page_node = reinterpret_cast<BPlusTreeInternalPage *> (page->GetData());
 
-  // insert into parent
+  // insert into parent, adopt
   parent_page_node->InsertNodeAfter(old_node->GetPageId(), key, 
                                       new_node->GetPageId());
-  
+  new_node->SetParentPageId(parent_page_node->GetPageId()); 
+
   // after insert into parent, recursion check if full
   if (parent_page_node->GetMaxSize() == parent_page_node->GetSize()) {
 
     auto* new_parent_page_node = Split(*parent_page_node);
-
     auto partition_key = new_parent_page_node->KeyAt(0); // partition key
-
-    // recursively handle parent
     InsertIntoParent(parent_page_node, partition_key, 
                       new_parent_page_node, transaction);
-
-    // done using; mark dirty
     buffer_pool_manager_->UnpinPageImpl(new_parent_page_node->GetPageId(), true);
   }
 
