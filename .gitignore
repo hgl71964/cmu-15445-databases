@@ -263,3 +263,6 @@ docs/dev
 
 # cache file, found after cmake
 .cache
+
+# txt file
+res.txt
