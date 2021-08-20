@@ -115,7 +115,9 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &valu
   array[keyidx].first = key;
   array[keyidx].second = value;
 
-  LOG_DEBUG("key: %ld - insert index: %d - page_id: %d", key.ToString(), keyidx, GetPageId());
+  if (b_debug_msg) {
+    LOG_DEBUG("key: %ld - insert index: %d - page_id: %d", key.ToString(), keyidx, GetPageId());
+  }
 
   return BPlusTreePage::GetSize();
 }

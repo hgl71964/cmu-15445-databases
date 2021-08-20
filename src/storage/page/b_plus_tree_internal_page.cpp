@@ -150,6 +150,11 @@ int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value,
   }
   array[index+1].first = new_key;
   array[index+1].second = new_value;
+
+  //if (b_debug_msg) {
+  //  LOG_DEBUG("index: %d - key: %ld", index+1, new_key.ToString());
+  //}
+
   return BPlusTreePage::GetSize();
 }
 

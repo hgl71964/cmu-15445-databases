@@ -19,7 +19,7 @@
 
 namespace bustub {
 namespace {
-  const bool debug_msg = true;
+  const bool b_debug_msg = false;
 }
 INDEX_TEMPLATE_ARGUMENTS
 BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
@@ -111,6 +111,12 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 
   if (debug_msg){
     LOG_DEBUG("key: %ld - ok: %d", key.ToString(), ok);
+    Page *page;
+    BPlusTreePage *page_node;
+
+    page = buffer_pool_manager_->FetchPage(root_page_id_);
+    page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
+    ToString(page_node, buffer_pool_manager_);
   }
 
   return ok;
@@ -303,7 +309,9 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
   new_node->SetParentPageId(parent_page_node->GetPageId()); 
 
   // after insert into parent, recursion check if full
-  if (parent_page_node->GetMaxSize() == parent_page_node->GetSize()) {
+  if (parent_page_node->GetMaxSize() < parent_page_node->GetSize()) {
+    //LOG_DEBUG("error - parent_page_node->GetMaxSize(): %d, parent_page_node->GetSize(): %d", 
+    //      parent_page_node->GetMaxSize(), parent_page_node->GetSize());
 
     auto *new_parent_page_node = Split(parent_page_node);
     auto partition_key = new_parent_page_node->KeyAt(0); // partition key
