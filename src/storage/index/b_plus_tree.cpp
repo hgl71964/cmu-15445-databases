@@ -93,7 +93,7 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   bool ok = InsertIntoLeaf(key, value, transaction);
 
   if (debug_msg){
-    LOG_INFO("Insert - ok: %d", ok);
+    LOG_DEBUG(" - ok: %d", ok);
   }
 
   return ok;
@@ -155,7 +155,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
   leaf_page_node->Insert(key, val, comparator_);
 
   if (debug_msg) {
-    LOG_INFO("InsertIntoLeaf -");
+    LOG_DEBUG(" - ");
   }
 
   // if full, split leaf node
