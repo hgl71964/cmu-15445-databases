@@ -13,6 +13,7 @@
 
 #include "common/exception.h"
 #include "common/rid.h"
+#include "common/logger.h"
 #include "storage/index/b_plus_tree.h"
 #include "storage/page/header_page.h"
 
@@ -87,6 +88,8 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 
   // 2. insert - ok = no duplicate
   bool ok = InsertIntoLeaf(key, value, transaction);
+  LOG_INFO("Insert - ok: %d", ok);
+
   return ok;
 }
 
