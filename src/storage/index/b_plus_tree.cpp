@@ -100,7 +100,7 @@ INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
 
   // ask for new root page
-  page_id_t *page_id;
+  page_id_t *page_id = nullptr;
   auto *root_page = new_root(page_id, true);
 
   // init new tree (as leaf)
@@ -148,7 +148,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
   // if full, split leaf node
   if (leaf_page_node->GetMaxSize() == leaf_page_node->GetSize()) {
 
-    B_PLUS_TREE_LEAF_PAGE_TYPE* new_leaf_page_node = Split(leaf_page_node);
+    B_PLUS_TREE_LEAF_PAGE_TYPE* new_leaf_page_node = split_leaf(leaf_page_node);
 
     auto partition_key = new_leaf_page_node->KeyAt(0); // partition key
 
@@ -173,6 +173,28 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
  * of key & value pairs from input page to newly created page
  */
 INDEX_TEMPLATE_ARGUMENTS
+B_PLUS_TREE_LEAF_PAGE_TYPE *BPLUSTREE_TYPE::split_leaf(B_PLUS_TREE_LEAF_PAGE_TYPE *node) {
+
+  // new page
+  page_id_t page_id;
+  auto *page = buffer_pool_manager_->NewPage(&page_id);
+  if (page == nullptr) {
+    throw Exception(ExceptionType::OUT_OF_MEMORY, "Split out of mem");
+  }
+
+  // init new nodes
+  auto *new_page_node = 
+      reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *> (page->GetData());
+  new_page_node->Init(page_id, node->GetParentPageId(), node->GetMaxSize());
+
+  // move key & val pairs
+  node->MoveHalfTo(new_page_node);
+
+  // new page wull be used by caller, dont Unpin
+  return new_page_node;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 N *BPLUSTREE_TYPE::Split(N *node) {
 
@@ -183,9 +205,12 @@ N *BPLUSTREE_TYPE::Split(N *node) {
     throw Exception(ExceptionType::OUT_OF_MEMORY, "Split out of mem");
   }
 
-  // move key & val pairs
+  // init new nodes
   N *new_page_node = reinterpret_cast<N *> (page->GetData());
-  node->MoveHalfTo(new_page_node);
+  new_page_node->Init(page_id, node->GetParentPageId(), node->GetMaxSize());
+
+  // move key & val pairs
+  node->MoveHalfTo(new_page_node, buffer_pool_manager_);
 
   // new page wull be used by caller, dont Unpin
   return new_page_node;
@@ -211,7 +236,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
   // root - terminate recursion
   if (parent_id == INVALID_PAGE_ID) {
 
-    page_id_t *page_id;
+    page_id_t *page_id = nullptr;
     auto *root_page = new_root(page_id, false);
 
     // init new root (as internal)
