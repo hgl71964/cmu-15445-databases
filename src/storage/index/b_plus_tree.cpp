@@ -29,7 +29,11 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
       buffer_pool_manager_(buffer_pool_manager),
       comparator_(comparator),
       leaf_max_size_(leaf_max_size),
-      internal_max_size_(internal_max_size) {}
+      internal_max_size_(internal_max_size) {
+        if (debug_msg) {
+          LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
+        }
+      }
 
 /*
  * Helper function to decide whether current b+tree is empty
@@ -61,7 +65,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
   bool ok = leaf_page_node->Lookup(key, &val, comparator_);
 
   if (debug_msg) {
-    LOG_DEBUG("ok: %d - size: %ld", ok, result->size());
+    LOG_DEBUG("key: %ld - find: %d - size: %ld", key.ToString(), ok, result->size());
   }
 
   // result.resize(1);

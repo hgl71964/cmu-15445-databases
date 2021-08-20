@@ -12,6 +12,7 @@
 #include <sstream>
 
 #include "common/exception.h"
+#include "common/logger.h"
 #include "common/rid.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
 
@@ -113,6 +114,8 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &valu
   }
   array[keyidx].first = key;
   array[keyidx].second = value;
+
+  LOG_DEBUG("key: %ld - insert index: %d - page_id: %d", key.ToString(), keyidx, GetPageId());
 
   return BPlusTreePage::GetSize();
 }
