@@ -215,6 +215,7 @@ B_PLUS_TREE_LEAF_PAGE_TYPE *BPLUSTREE_TYPE::split_leaf(B_PLUS_TREE_LEAF_PAGE_TYP
 
   // move key & val pairs
   node->MoveHalfTo(new_page_node);
+  node->SetNextPageId(new_page_node->GetPageId());
 
   //if (debug_msg) {
   //  LOG_DEBUG("old page id: %d - new page id: %d", node->GetPageId(), new_page_node->GetPageId());
