@@ -215,7 +215,9 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
     auto *root_page = new_root(page_id, false);
 
     // init new root (as internal)
-    auto *root_node = reinterpret_cast<B_PLUS_TREE_INTERNAL_PAGE_TYPE *> (root_page->GetData());
+    auto *root_node = 
+      reinterpret_cast<BPlusTreeInternalPage<KeyType, 
+        page_id_t, KeyComparator> *> (root_page->GetData());
     root_node->Init(*page_id, INVALID_PAGE_ID, internal_max_size_);
 
     // adopt
@@ -231,7 +233,9 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
 
   // else fetch parent page
   auto *page = buffer_pool_manager_->FetchPage(parent_id);
-  auto *parent_page_node = reinterpret_cast<B_PLUS_TREE_INTERNAL_PAGE_TYPE *> (page->GetData());
+  auto *parent_page_node = 
+    reinterpret_cast<BPlusTreeInternalPage<KeyType, 
+      page_id_t, KeyComparator> *> (page->GetData());
 
   // insert into parent, adopt
   parent_page_node->InsertNodeAfter(old_node->GetPageId(), key, 
@@ -384,7 +388,7 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
 
   Page *page;
   BPlusTreePage *page_node;
-  ValueType val;
+  page_id_t val;
 
   // root
   page = buffer_pool_manager_->FetchPage(root_page_id_);
@@ -395,7 +399,10 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   while (!page_node->IsLeafPage()) {
 
     // data key must exist in internal node
-    auto *internal_page_node = reinterpret_cast<B_PLUS_TREE_INTERNAL_PAGE_TYPE *> (page_node);
+    auto *internal_page_node = 
+      reinterpret_cast<BPlusTreeInternalPage<KeyType, 
+        page_id_t, KeyComparator> *> (page_node);
+
     val = (leftMost)? internal_page_node->ValueAt(0)
                     :internal_page_node->Lookup(key, comparator_);
 
