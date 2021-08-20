@@ -19,7 +19,7 @@
 
 namespace bustub {
 
-const bool b_debug_msg = false;
+const bool b_debug_msg = true;
 
 
 INDEX_TEMPLATE_ARGUMENTS
