@@ -307,8 +307,8 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node,
     //      parent_page_node->GetMaxSize(), parent_page_node->GetSize());
 
     auto *new_parent_page_node = Split(parent_page_node);
-    //auto partition_key = new_parent_page_node->KeyAt(0); // partition key
-    auto partition_key = parent_page_node->KeyAt(parent_page_node->GetSize()-1); // partition key
+    auto partition_key = new_parent_page_node->KeyAt(0); // partition key
+    //auto partition_key = parent_page_node->KeyAt(parent_page_node->GetSize()-1); // partition key
     InsertIntoParent(parent_page_node, partition_key, 
                       new_parent_page_node, transaction);
     buffer_pool_manager_->UnpinPage(new_parent_page_node->GetPageId(), true);
