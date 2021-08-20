@@ -53,6 +53,15 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
                               std::vector<ValueType> *result, 
                               Transaction *transaction) {
 
+  if (debug_msg) {
+    Page *page;
+    BPlusTreePage *page_node;
+
+    page = buffer_pool_manager_->FetchPage(root_page_id_);
+    page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
+    ToString(page_node, buffer_pool_manager_);
+  }
+
   Page* page = FindLeafPage(key, false);
 
   if (page == nullptr) {
@@ -65,7 +74,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
   bool ok = leaf_page_node->Lookup(key, &val, comparator_);
 
   if (debug_msg) {
-    LOG_DEBUG("key: %ld - find: %d - size: %ld", key.ToString(), ok, result->size());
+    LOG_DEBUG("key: %ld - find: %d - page_id: %d", key.ToString(), ok, leaf_page_node->GetPageId());
   }
 
   // result.resize(1);
@@ -162,10 +171,6 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
   // insert
   leaf_page_node->Insert(key, val, comparator_);
 
-  if (debug_msg) {
-    LOG_DEBUG(" - ");
-  }
-
   // if full, split leaf node
   if (leaf_page_node->GetMaxSize() == leaf_page_node->GetSize()) {
 
@@ -211,6 +216,10 @@ B_PLUS_TREE_LEAF_PAGE_TYPE *BPLUSTREE_TYPE::split_leaf(B_PLUS_TREE_LEAF_PAGE_TYP
   // move key & val pairs
   node->MoveHalfTo(new_page_node);
 
+  //if (debug_msg) {
+  //  LOG_DEBUG("old page id: %d - new page id: %d", node->GetPageId(), new_page_node->GetPageId());
+  //}
+
   // new page wull be used by caller, dont Unpin
   return new_page_node;
 }
@@ -232,6 +241,10 @@ N *BPLUSTREE_TYPE::Split(N *node) {
 
   // move key & val pairs
   node->MoveHalfTo(new_page_node, buffer_pool_manager_);
+
+  //if (debug_msg) {
+  //  LOG_DEBUG("old page id: %d - new page id: %d", node->GetPageId(), new_page_node->GetPageId());
+  //}
 
   // new page wull be used by caller, dont Unpin
   return new_page_node;
