@@ -60,6 +60,10 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
   ValueType val;
   bool ok = leaf_page_node->Lookup(key, &val, comparator_);
 
+  if (debug_msg) {
+    LOG_DEBUG("ok: %d - size: %ld", ok, result->size());
+  }
+
   // result.resize(1);
   if (ok) {
     result->push_back(std::move(val));
@@ -93,7 +97,7 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   bool ok = InsertIntoLeaf(key, value, transaction);
 
   if (debug_msg){
-    LOG_DEBUG(" - ok: %d", ok);
+    LOG_DEBUG("key: %ld - ok: %d", key.ToString(), ok);
   }
 
   return ok;
