@@ -18,6 +18,9 @@
 #include "storage/page/header_page.h"
 
 namespace bustub {
+namespace {
+  const bool debug_msg = true;
+}
 INDEX_TEMPLATE_ARGUMENTS
 BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
                           int leaf_max_size, int internal_max_size)
@@ -88,7 +91,9 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 
   // 2. insert - ok = no duplicate
   bool ok = InsertIntoLeaf(key, value, transaction);
-  LOG_INFO("Insert - ok: %d", ok);
+
+  if (debug_msg)
+    LOG_INFO("Insert - ok: %d", ok);
 
   return ok;
 }
@@ -147,6 +152,9 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
 
   // insert
   leaf_page_node->Insert(key, val, comparator_);
+
+  if (debug_msg) 
+    LOG_INFO("InsertIntoLeaf -");
 
   // if full, split leaf node
   if (leaf_page_node->GetMaxSize() == leaf_page_node->GetSize()) {
