@@ -18,9 +18,10 @@
 #include "storage/page/header_page.h"
 
 namespace bustub {
-namespace {
-  const bool b_debug_msg = false;
-}
+
+const bool b_debug_msg = false;
+
+
 INDEX_TEMPLATE_ARGUMENTS
 BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
                           int leaf_max_size, int internal_max_size)
@@ -30,7 +31,7 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
       comparator_(comparator),
       leaf_max_size_(leaf_max_size),
       internal_max_size_(internal_max_size) {
-        if (debug_msg) {
+        if (b_debug_msg) {
           LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
         }
       }
@@ -53,7 +54,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
                               std::vector<ValueType> *result, 
                               Transaction *transaction) {
 
-  if (debug_msg) {
+  if (b_debug_msg) {
     Page *page;
     BPlusTreePage *page_node;
 
@@ -73,7 +74,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
   ValueType val;
   bool ok = leaf_page_node->Lookup(key, &val, comparator_);
 
-  if (debug_msg) {
+  if (b_debug_msg) {
     LOG_DEBUG("key: %ld - find: %d - page_id: %d", key.ToString(), ok, leaf_page_node->GetPageId());
   }
 
@@ -109,7 +110,7 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   // 2. insert - ok = no duplicate
   bool ok = InsertIntoLeaf(key, value, transaction);
 
-  if (debug_msg){
+  if (b_debug_msg){
     LOG_DEBUG("key: %ld - ok: %d", key.ToString(), ok);
     Page *page;
     BPlusTreePage *page_node;
@@ -223,10 +224,6 @@ B_PLUS_TREE_LEAF_PAGE_TYPE *BPLUSTREE_TYPE::split_leaf(B_PLUS_TREE_LEAF_PAGE_TYP
   node->MoveHalfTo(new_page_node);
   node->SetNextPageId(new_page_node->GetPageId());
 
-  //if (debug_msg) {
-  //  LOG_DEBUG("old page id: %d - new page id: %d", node->GetPageId(), new_page_node->GetPageId());
-  //}
-
   // new page wull be used by caller, dont Unpin
   return new_page_node;
 }
@@ -248,10 +245,6 @@ N *BPLUSTREE_TYPE::Split(N *node) {
 
   // move key & val pairs
   node->MoveHalfTo(new_page_node, buffer_pool_manager_);
-
-  //if (debug_msg) {
-  //  LOG_DEBUG("old page id: %d - new page id: %d", node->GetPageId(), new_page_node->GetPageId());
-  //}
 
   // new page wull be used by caller, dont Unpin
   return new_page_node;
