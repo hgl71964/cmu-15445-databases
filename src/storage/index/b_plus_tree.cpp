@@ -19,8 +19,9 @@
 
 namespace bustub {
 
-const bool b_debug_msg = true;
-
+namespace {
+  const bool b_debug_msg = false;
+}
 
 INDEX_TEMPLATE_ARGUMENTS
 BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
@@ -54,14 +55,14 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
                               std::vector<ValueType> *result, 
                               Transaction *transaction) {
 
-  if (b_debug_msg) {
-    Page *page;
-    BPlusTreePage *page_node;
+  //if (b_debug_msg) {
+  //  Page *page;
+  //  BPlusTreePage *page_node;
 
-    page = buffer_pool_manager_->FetchPage(root_page_id_);
-    page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
-    ToString(page_node, buffer_pool_manager_);
-  }
+  //  page = buffer_pool_manager_->FetchPage(root_page_id_);
+  //  page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
+  //  ToString(page_node, buffer_pool_manager_);
+  //}
 
   Page* page = FindLeafPage(key, false);
 
@@ -107,21 +108,21 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     return true;
   }
 
-  if (b_debug_msg){
-    LOG_DEBUG("key: %ld - val_slot: %d ", key.ToString(), value.GetSlotNum());
-  }
+  //if (b_debug_msg){
+  //  LOG_DEBUG("key: %ld - val_slot: %d ", key.ToString(), value.GetSlotNum());
+  //}
 
   // 2. insert - ok = no duplicate
   bool ok = InsertIntoLeaf(key, value, transaction);
 
   if (b_debug_msg){
     LOG_DEBUG("key: %ld - val_slot: %d - ok: %d", key.ToString(), value.GetSlotNum(), ok);
-    Page *page;
-    BPlusTreePage *page_node;
+    //Page *page;
+    //BPlusTreePage *page_node;
 
-    page = buffer_pool_manager_->FetchPage(root_page_id_);
-    page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
-    ToString(page_node, buffer_pool_manager_);
+    //page = buffer_pool_manager_->FetchPage(root_page_id_);
+    //page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
+    //ToString(page_node, buffer_pool_manager_);
   }
 
   return ok;
@@ -166,6 +167,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
   
   auto *page = FindLeafPage(key, false);
   if (page == nullptr) {
+    LOG_DEBUG("b+ tree - InsertIntoLeaf");
     throw Exception(ExceptionType::INVALID, "b+ tree - InsertIntoLeaf");
   }
 
@@ -216,6 +218,7 @@ B_PLUS_TREE_LEAF_PAGE_TYPE *BPLUSTREE_TYPE::split_leaf(B_PLUS_TREE_LEAF_PAGE_TYP
   page_id_t page_id;
   auto *page = buffer_pool_manager_->NewPage(&page_id);
   if (page == nullptr) {
+    LOG_DEBUG("Split leave out of mem");
     throw Exception(ExceptionType::OUT_OF_MEMORY, "Split out of mem");
   }
 
@@ -240,6 +243,7 @@ N *BPLUSTREE_TYPE::Split(N *node) {
   page_id_t page_id;
   auto *page = buffer_pool_manager_->NewPage(&page_id);
   if (page == nullptr) {
+    LOG_DEBUG("Split out of mem");
     throw Exception(ExceptionType::OUT_OF_MEMORY, "Split out of mem");
   }
 
@@ -430,6 +434,7 @@ Page *BPLUSTREE_TYPE::new_root(page_id_t *page_id, const bool new_tree) {
   auto *page = buffer_pool_manager_->NewPage(page_id);
 
   if (page == nullptr) {
+    LOG_DEBUG("start new tree out of mem");
     throw Exception(ExceptionType::OUT_OF_MEMORY, "start new tree out of mem");
   }
 

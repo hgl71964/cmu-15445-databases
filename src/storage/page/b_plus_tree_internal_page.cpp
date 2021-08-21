@@ -137,7 +137,7 @@ int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value,
                                                     const KeyType &new_key,
                                                     const ValueType &new_value) {
   
-  if (BPlusTreePage::GetSize() >= BPlusTreePage::GetMaxSize()) {
+  if (BPlusTreePage::GetSize() > BPlusTreePage::GetMaxSize()) {
     LOG_ERROR("internal InsertNodeAfter size");
   }
 
