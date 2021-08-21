@@ -13,12 +13,13 @@ namespace bustub {
  */
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::IndexIterator() = default;
+//: page_id(INVALID_PAGE_ID), buffer_pool_manager_(nullptr), index(0) {}
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::IndexIterator(B_PLUS_TREE_LEAF_PAGE_TYPE *leaf, 
-                                    BufferPoolManager *bpm,
-                                    int index)
-:page_id(leaf->GetPageId()), buffer_pool_manager_(bpm), index(index) {}
+INDEXITERATOR_TYPE::IndexIterator(page_id_t pid, 
+                                BufferPoolManager *bpm,
+                                int index)
+:page_id(pid), buffer_pool_manager_(bpm), index(index), item() {}
 
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::~IndexIterator() = default;
@@ -36,10 +37,11 @@ const MappingType &INDEXITERATOR_TYPE::operator*() {
     auto *page = buffer_pool_manager_->FetchPage(page_id);
     auto* leaf_page= reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *> (page->GetData());
 
-    MappingType m = leaf_page.GetItem(index);
+    MappingType m = leaf_page->GetItem(index);
+    item = m;
 
     buffer_pool_manager_->UnpinPage(leaf_page->GetPageId(), false);
-    return m;
+    return item;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -48,22 +50,19 @@ INDEXITERATOR_TYPE &INDEXITERATOR_TYPE::operator++() {
         throw Exception(ExceptionType::INVALID, "iterator *");
     }
 
-    page_id_t new_page_id;
-    int new_index;
-
     auto *page = buffer_pool_manager_->FetchPage(page_id);
     auto *leaf_page= reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *> (page->GetData());
 
     if (index == (leaf_page->GetSize()-1)) {
-        new_page_id = leaf_page->GetNextPageId();
-        new_index = 0
+        page_id = leaf_page->GetNextPageId();
+        index = 0;
     } else {
-        new_page_id = page_id;
-        new_index = index + 1;
+        page_id = page_id;
+        index++;
     }
 
     buffer_pool_manager_->UnpinPage(leaf_page->GetPageId(), false);
-    return INDEXITERATOR_TYPE(new_page_id, buffer_pool_manager_, new_index); 
+    return *this;
 }
 
 template class IndexIterator<GenericKey<4>, RID, GenericComparator<4>>;

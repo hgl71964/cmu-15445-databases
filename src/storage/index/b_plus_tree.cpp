@@ -417,7 +417,7 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
 
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *> (page->GetData());
 
-  return INDEXITERATOR_TYPE(leaf_page_node, buffer_pool_manager_, 0); 
+  return INDEXITERATOR_TYPE(leaf_page_node->GetPageId(), buffer_pool_manager_, 0); 
 }
 
 /*
@@ -436,7 +436,7 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
   }
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *> (page->GetData());
 
-  return INDEXITERATOR_TYPE(leaf_page_node, buffer_pool_manager_, 0); 
+  return INDEXITERATOR_TYPE(leaf_page_node->GetPageId(), buffer_pool_manager_, 0); 
 }
 
 /*
