@@ -35,6 +35,7 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
         if (b_debug_msg) {
           LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
         }
+        LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
       }
 
 /*
@@ -436,7 +437,13 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
   }
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *> (page->GetData());
 
-  return INDEXITERATOR_TYPE(leaf_page_node->GetPageId(), buffer_pool_manager_, 0); 
+  auto itr = INDEXITERATOR_TYPE(leaf_page_node->GetPageId(), buffer_pool_manager_, 0); 
+
+  while (comparator_((*itr).first, key) != 0) {
+    ++itr;
+  }
+
+  return itr;
 }
 
 /*
