@@ -317,7 +317,28 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
  * necessary.
  */
 INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {}
+void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
+  if (IsEmpty()) {
+    return;
+  }
+
+  // lookup - if not exist return
+  auto *page = FindLeafPage(key, false);
+  if (page == nullptr) {
+    LOG_DEBUG("b+ tree - InsertIntoLeaf");
+    throw Exception(ExceptionType::INVALID, "b+ tree - InsertIntoLeaf");
+  }
+  auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
+  ValueType val;
+  bool exist = leaf_page_node->Lookup(key, &val, comparator_);
+  if (!exist) {
+    // try to insert deplicate key
+    buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
+    return;
+  }
+
+  // TODO delete + redist + merge
+}
 
 /*
  * User needs to first find the sibling of input page. If sibling's size + input
