@@ -33,16 +33,12 @@ class IndexIterator {
 
   IndexIterator &operator++();
 
-  page_id_t get_pid() const {return page_id;}
-  int get_index() const {return index;}
+  page_id_t get_pid() const { return page_id; }
+  int get_index() const { return index; }
 
-  bool operator==(const IndexIterator &itr) const {
-    return ((page_id == itr.get_pid()) && (index == itr.get_index()));
-  }
+  bool operator==(const IndexIterator &itr) const { return ((page_id == itr.get_pid()) && (index == itr.get_index())); }
 
-  bool operator!=(const IndexIterator &itr) const {
-    return ((page_id != itr.get_pid()) || (index != itr.get_index()));
-  }
+  bool operator!=(const IndexIterator &itr) const { return ((page_id != itr.get_pid()) || (index != itr.get_index())); }
 
  private:
   // add your own private member variables here
