@@ -322,22 +322,21 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     return;
   }
 
-  // lookup - if not exist return
+  // fetch
   auto *page = FindLeafPage(key, false);
   if (page == nullptr) {
     LOG_DEBUG("b+ tree - InsertIntoLeaf");
-    throw Exception(ExceptionType::INVALID, "b+ tree - InsertIntoLeaf");
+    throw Exception(ExceptionType::INVALID, "remove");
   }
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
-  ValueType val;
-  bool exist = leaf_page_node->Lookup(key, &val, comparator_);
-  if (!exist) {
-    // try to insert deplicate key
-    buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
-    return;
-  }
 
-  // TODO delete + redist + merge
+  // delete
+  int remain_size = leaf_page_node->RemoveAndDeleteRecord(key, comparator_);
+
+  // TODO  + redist + merge
+
+  // dirtY
+  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
 }
 
 /*
@@ -384,7 +383,8 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
  */
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
-void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {}
+void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
+}
 /*
  * Update root page if necessary
  * NOTE: size of root page can be less than min size and this method is only
@@ -396,7 +396,9 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {}
  * happend
  */
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) { return false; }
+bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
+  return false; 
+}
 
 /*****************************************************************************
  * INDEX ITERATOR
