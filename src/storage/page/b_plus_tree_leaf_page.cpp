@@ -115,9 +115,7 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &valu
   array[keyidx].first = key;
   array[keyidx].second = value;
 
-  //if (b_debug_msg) {
-  //  LOG_DEBUG("key: %ld - insert index: %d - page_id: %d", key.ToString(), keyidx, GetPageId());
-  //}
+  //LOG_DEBUG("key: %ld - val: %d - insert index: %d - page_id: %d", key.ToString(), value.GetSlotNum(), keyidx, GetPageId());
 
   return BPlusTreePage::GetSize();
 }
@@ -137,6 +135,9 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(BPlusTreeLeafPage *recipient) {
 
   int move_size = size - size/2;
   int start_index = size/2;
+
+  //LOG_DEBUG("key: %ld, val: %d", array[0].first.ToString(), array[0].second.GetSlotNum());
+  //LOG_DEBUG("key: %ld, val: %d", array[start_index].first.ToString(), array[start_index].second.GetSlotNum());
 
   // move half to; assume recipient is a new page
   recipient->CopyNFrom(&array[start_index], move_size);

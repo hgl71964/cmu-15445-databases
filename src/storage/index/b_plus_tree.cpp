@@ -75,7 +75,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key,
   bool ok = leaf_page_node->Lookup(key, &val, comparator_);
 
   if (b_debug_msg) {
-    LOG_DEBUG("key: %ld - find: %d - page_id: %d", key.ToString(), ok, leaf_page_node->GetPageId());
+    LOG_DEBUG("key: %ld - val_slot: %d - find: %d - page_id: %d", key.ToString(), val.GetSlotNum(), ok, leaf_page_node->GetPageId());
   }
 
   // result.resize(1);
@@ -107,11 +107,15 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     return true;
   }
 
+  if (b_debug_msg){
+    LOG_DEBUG("key: %ld - val_slot: %d ", key.ToString(), value.GetSlotNum());
+  }
+
   // 2. insert - ok = no duplicate
   bool ok = InsertIntoLeaf(key, value, transaction);
 
   if (b_debug_msg){
-    LOG_DEBUG("key: %ld - ok: %d", key.ToString(), ok);
+    LOG_DEBUG("key: %ld - val_slot: %d - ok: %d", key.ToString(), value.GetSlotNum(), ok);
     Page *page;
     BPlusTreePage *page_node;
 
@@ -176,7 +180,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key,
   }
 
   // insert
-  leaf_page_node->Insert(key, val, comparator_);
+  leaf_page_node->Insert(key, value, comparator_);
 
   // if full, split leaf node
   if (leaf_page_node->GetMaxSize() == leaf_page_node->GetSize()) {
