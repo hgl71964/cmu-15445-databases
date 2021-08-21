@@ -406,7 +406,9 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) { return false; }
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() { return INDEXITERATOR_TYPE(); }
+INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
+  return INDEXITERATOR_TYPE(); 
+}
 
 /*
  * Input parameter is low key, find the leaf page that contains the input key
@@ -414,7 +416,9 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() { return INDEXITERATOR_TYPE(); }
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) { return INDEXITERATOR_TYPE(); }
+INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
+  return INDEXITERATOR_TYPE(); 
+}
 
 /*
  * Input parameter is void, construct an index iterator representing the end
@@ -422,7 +426,9 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) { return INDEXITERA
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(); }
+INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() {
+  return INDEXITERATOR_TYPE(); 
+}
 
 /*****************************************************************************
  * UTILITIES AND DEBUG
