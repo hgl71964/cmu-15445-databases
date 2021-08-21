@@ -24,6 +24,7 @@ class IndexIterator {
  public:
   // you may define your own constructor based on your member variables
   IndexIterator();
+  IndexIterator(B_PLUS_TREE_LEAF_PAGE_TYPE *leaf);
   ~IndexIterator();
 
   bool isEnd();
@@ -38,6 +39,8 @@ class IndexIterator {
 
  private:
   // add your own private member variables here
+  page_id_t page_id;
+  int index;
 };
 
 }  // namespace bustub

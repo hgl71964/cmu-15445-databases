@@ -407,7 +407,17 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) { return false; }
  */
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
-  return INDEXITERATOR_TYPE(); 
+  //return INDEXITERATOR_TYPE(); 
+  KeyType k;
+  auto *page = FindLeafPage(k, true);
+  if (page == nullptr) {
+    LOG_DEBUG("begin");
+    throw Exception(ExceptionType::INVALID, "begin");
+  }
+
+  auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *> (page->GetData());
+
+  return INDEXITERATOR_TYPE(leaf_page_node); 
 }
 
 /*
@@ -417,7 +427,16 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
  */
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
-  return INDEXITERATOR_TYPE(); 
+  //return INDEXITERATOR_TYPE(); 
+
+  auto *page = FindLeafPage(key, false);
+  if (page == nullptr) {
+    LOG_DEBUG("begin");
+    throw Exception(ExceptionType::INVALID, "begin");
+  }
+  auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *> (page->GetData());
+
+  return INDEXITERATOR_TYPE(leaf_page_node); 
 }
 
 /*
@@ -427,7 +446,7 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() {
-  return INDEXITERATOR_TYPE(); 
+  return INDEXITERATOR_TYPE(INVALID_PAGE_ID, 0); 
 }
 
 /*****************************************************************************
