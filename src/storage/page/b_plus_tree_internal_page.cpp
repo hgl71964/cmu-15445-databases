@@ -33,6 +33,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
   BPlusTreePage::SetPageType(IndexPageType::INTERNAL_PAGE);
   BPlusTreePage::SetPageId(page_id);
   BPlusTreePage::SetParentPageId(parent_id);
+  BPlusTreePage::SetSize(0);
   // BPlusTreePage::SetMaxSize(max_size);
 
   if (max_size > 4) {
@@ -41,8 +42,6 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
     BPlusTreePage::SetMaxSize(4);
   }
 
-  // XXX init page set??
-  BPlusTreePage::SetSize(0);
 }
 /*
  * Helper method to get/set the key associated with input "index"(a.k.a
@@ -113,12 +112,12 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
 
   while (left + 1 < right) {
     mid = (left + right) / 2;
-    if (comparator(array[mid].first, key) == 0) {
-      return array[mid].second;
-    } else if (comparator(array[mid].first, key) == 1) {  // array[mid] > key
+    if (comparator(array[mid].first, key) == 1) {
       right = mid;
-    } else {
+    } else if (comparator(array[mid].first, key) == -1) {
       left = mid;
+    } else {
+      return array[mid].second;
     }
   }
 

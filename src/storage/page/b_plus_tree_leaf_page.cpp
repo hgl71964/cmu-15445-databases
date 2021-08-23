@@ -167,30 +167,25 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyNFrom(MappingType *items, int size) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &key, ValueType *value, const KeyComparator &comparator) const {
-
   int left = 0;
   int right = BPlusTreePage::GetSize() - 1;
   int mid;
 
-  // for (int i = 1; i < GetSize(); i++) {
-  //  LOG_DEBUG("key: %ld - array key: %ld ", key.ToString(), array[i].first.ToString());
-  //  LOG_DEBUG("compare: %d", comparator(array[i].first, key));
-  //}
-
   while (left + 1 < right) {
     mid = (left + right) / 2;
-    if (comparator(array[mid].first, key) == 0) {
+    if (comparator(array[mid].first, key) == 1) {  // array[mid] > key
+      right = mid;
+    } else if (comparator(array[mid].first, key) == -1) {
+      left = mid;
+    } else {
       *value = array[mid].second;
       return true;
-    } else if (comparator(array[mid].first, key) == 1) {  // array[mid] > key
-      right = mid;
-    } else {
-      left = mid;
     }
   }
+
   for (int i = left; i < right + 1; i++) {
     if (comparator(array[i].first, key) == 0) {  // array[mid] > key
-      *value = array[mid].second;
+      *value = array[i].second;
       return true;
     }
   }
@@ -241,8 +236,7 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(const KeyType &key, const 
  * to update the next_page id in the sibling page
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveAllTo(BPlusTreeLeafPage *recipient) {
-}
+void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveAllTo(BPlusTreeLeafPage *recipient) {}
 
 /*****************************************************************************
  * REDISTRIBUTE
