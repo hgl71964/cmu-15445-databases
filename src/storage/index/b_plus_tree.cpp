@@ -60,6 +60,14 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   //  page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
   //  ToString(page_node, buffer_pool_manager_);
   //}
+  //{
+  //  Page *page;
+  //  BPlusTreePage *page_node;
+
+  //  page = buffer_pool_manager_->FetchPage(root_page_id_);
+  //  page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
+  //  ToString(page_node, buffer_pool_manager_);
+  //}
 
   Page *page = FindLeafPage(key, false);
 

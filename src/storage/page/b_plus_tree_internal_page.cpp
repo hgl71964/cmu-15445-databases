@@ -33,7 +33,13 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
   BPlusTreePage::SetPageType(IndexPageType::INTERNAL_PAGE);
   BPlusTreePage::SetPageId(page_id);
   BPlusTreePage::SetParentPageId(parent_id);
-  BPlusTreePage::SetMaxSize(max_size);
+  //BPlusTreePage::SetMaxSize(max_size);
+
+  if (max_size > 4) {
+    BPlusTreePage::SetMaxSize(max_size);
+  } else {
+    BPlusTreePage::SetMaxSize(4);
+  }
 
   // XXX init page set??
   BPlusTreePage::SetSize(0);
