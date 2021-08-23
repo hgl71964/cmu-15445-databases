@@ -258,11 +258,8 @@ N *BPLUSTREE_TYPE::Split(N *node) {
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &key, BPlusTreePage *new_node,
                                       Transaction *transaction) {
-  // get parent node id
-  auto parent_id = old_node->GetParentPageId();
-
   // root - terminate recursion
-  if (parent_id == INVALID_PAGE_ID) {
+  if (old_node->IsRootPage()) {
     page_id_t page_id;
     auto *root_page = new_root(&page_id, false);
 
@@ -282,6 +279,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   }
 
   // else fetch parent page
+  auto parent_id = old_node->GetParentPageId();
   auto *page = buffer_pool_manager_->FetchPage(parent_id);
   auto *parent_page_node =
       reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page->GetData());
@@ -291,7 +289,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   new_node->SetParentPageId(parent_page_node->GetPageId());
 
   // after insert into parent, recursion check if full
-  if (parent_page_node->GetMaxSize() == new_size) {
+  if (new_size == parent_page_node->GetMaxSize()) {
     // LOG_DEBUG("error - parent_page_node->GetMaxSize(): %d, parent_page_node->GetSize(): %d",
     //      parent_page_node->GetMaxSize(), parent_page_node->GetSize());
 
