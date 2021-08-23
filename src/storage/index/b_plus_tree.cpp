@@ -175,10 +175,10 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   }
 
   // insert
-  leaf_page_node->Insert(key, value, comparator_);
+  auto new_size = leaf_page_node->Insert(key, value, comparator_);
 
   // if full, split leaf node
-  if (leaf_page_node->GetMaxSize() == leaf_page_node->GetSize()) {
+  if (new_size == leaf_page_node->GetMaxSize()) {
     B_PLUS_TREE_LEAF_PAGE_TYPE *new_leaf_page_node = split_leaf(leaf_page_node);
 
     auto partition_key = leaf_page_node->KeyAt(leaf_page_node->GetSize() - 1);  // partition key
