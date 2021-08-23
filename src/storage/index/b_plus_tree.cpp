@@ -291,7 +291,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   new_node->SetParentPageId(parent_page_node->GetPageId());
 
   // after insert into parent, recursion check if full
-  if (parent_page_node->GetMaxSize() < parent_page_node->GetSize()) {
+  if (parent_page_node->GetMaxSize() == parent_page_node->GetSize()) {
     // LOG_DEBUG("error - parent_page_node->GetMaxSize(): %d, parent_page_node->GetSize(): %d",
     //      parent_page_node->GetMaxSize(), parent_page_node->GetSize());
 
@@ -332,6 +332,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
 
   // delete
   int remain_size = leaf_page_node->RemoveAndDeleteRecord(key, comparator_);
+  LOG_DEBUG(":%d", remain_size);
 
   // TODO  + redist + merge
 
