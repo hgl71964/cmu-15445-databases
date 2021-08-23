@@ -296,7 +296,6 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
 
   // after insert into parent, recursion check if full
   if (new_size >= parent_page_node->GetMaxSize()) {
-
     auto *new_parent_page_node = Split(parent_page_node);
     auto partition_key = new_parent_page_node->KeyAt(0);  // partition key
     // auto partition_key = parent_page_node->KeyAt(parent_page_node->GetSize()-1); // partition key
@@ -335,13 +334,16 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   // delete
   int remain_size = leaf_page_node->RemoveAndDeleteRecord(key, comparator_);
 
-  // redist merge
+  // redist or merge
   if (remain_size <= leaf_page_node->GetMinSize()) {
-    coalesceOrRedistribute(leaf_page_node, transaction);
+    if (leaf_page_node->IsRootPage()) {
+      // do nothing ?? 
+    } else{
+      bool hasDelete = CoalesceOrRedistribute(leaf_page_node, transaction);
+    }
   }
 
-  // dirtY
-  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
+  // TODO make sure all pages are unpinned
 }
 
 /*
@@ -354,28 +356,42 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
-
   bool redist = false;
 
-  // fetch sibling
+  // fetch sibling - redist or merge
   auto sibling_id = node->GetNextPageId();
-  if (sibling_id == INVALID_PAGE_ID ) {
+  N *sibling_node;
+  if (sibling_id == INVALID_PAGE_ID) {
     redist = true;
-  }
-  auto *sibling_page = buffer_pool_manager_->FetchPage(sibling_id);
-  auto *page_node = reinterpret_cast<N *>(sibling_page->GetData());
+  } else {
 
-  // redist or merge
-  if (page_node->GetSize() + node->GetSize() > node->GetMaxSize()) {
-    redist = true;
+    auto *sibling_page = buffer_pool_manager_->FetchPage(sibling_id);
+    sibling_node = reinterpret_cast<N *>(sibling_page->GetData());
+
+    // redist or merge
+    if (sibling_node->GetSize() + node->GetSize() > node->GetMaxSize()) {
+      redist = true;
+    }
   }
 
   if (redist) {
-    Redistribute();
+
+    // get index??
+    Redistribute(sibling_node, node, ??);
   } else {
-    coalesce();
+
+    // fetch parent_node
+    auto *parent_page = buffer_pool_manager_->NewPage(node->GetParentPageId());
+    auto *parent_node =   
+          reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *> (parent_page);
+
+    // get index??
+    Coalesce(&sibling_node, &node, &parent_node,
+          indedx, transaction);
   }
 
+  buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true); // FIXME
+  buffer_pool_manager_->UnpinPage(node->GetPageId(), true);
   return false;
 }
 
@@ -410,7 +426,14 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
  */
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
-void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {}
+void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
+
+  if (index == 0) {
+    neighbor_node->MoveFirstToEndOf(node);
+  } else{
+    neighbor_node->MoveLastToFrontOf(node);
+  }
+}
 /*
  * Update root page if necessary
  * NOTE: size of root page can be less than min size and this method is only
