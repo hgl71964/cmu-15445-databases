@@ -13,7 +13,6 @@
 #include "buffer/lru_replacer.h"
 #include <cstddef>
 #include <iterator>
-#include <mutex>
 #include "common/config.h"
 #include "common/logger.h"
 

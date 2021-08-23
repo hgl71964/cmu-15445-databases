@@ -16,7 +16,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <list>
-#include <mutex>
 #include <unordered_map>
 #include "common/config.h"
 #include "common/logger.h"
