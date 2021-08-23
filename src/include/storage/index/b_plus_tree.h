@@ -81,7 +81,7 @@ class BPlusTree {
 
  private:
   // self
-  Page *new_root(page_id_t *page_id, bool new_tree);
+  Page *new_root(bool new_tree);
   B_PLUS_TREE_LEAF_PAGE_TYPE *split_leaf(B_PLUS_TREE_LEAF_PAGE_TYPE *node);
   // self
 
