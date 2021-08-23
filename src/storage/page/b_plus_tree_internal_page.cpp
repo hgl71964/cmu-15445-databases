@@ -96,14 +96,28 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const {
 INDEX_TEMPLATE_ARGUMENTS
 ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator) const {
   // this tree does not allow duplicates key
-  // TODO binary search
+  int left = 0;
+  int right = BPlusTreePage::GetSize() - 1;
+  int mid;
 
-  for (int i = 1; i < BPlusTreePage::GetSize(); i++) {
-    if (comparator(array[i].first, key) != -1) {
-      return array[i - 1].second;
+  while (left + 1 < right) {
+    mid = (left+right)/2;
+    if (comparator(array[mid].first, key) == 0) {
+      return array[mid].second;
+    } else if (comparator(array[mid].first, key) == 1) {  // key > array[mid]
+      left = mid;
+    } else {
+      right = mid;
     }
   }
-  return array[BPlusTreePage::GetSize() - 1].second;  // XXX cannot find
+
+  for (int i = left; i < right; i++) {
+    if (comparator(array[mid].first, key) == 0) {
+      return array[mid].second;
+    }
+  }
+
+  return array[right].second;
 }
 
 /*****************************************************************************

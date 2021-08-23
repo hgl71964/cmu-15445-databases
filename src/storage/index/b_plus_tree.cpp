@@ -20,7 +20,7 @@
 namespace bustub {
 
 namespace {
-const bool b_debug_msg = false;
+const bool b_debug_msg = true;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -114,12 +114,12 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 
   if (b_debug_msg) {
     LOG_DEBUG("key: %ld - val_slot: %d - ok: %d", key.ToString(), value.GetSlotNum(), ok);
-    // Page *page;
-    // BPlusTreePage *page_node;
+    Page *page;
+    BPlusTreePage *page_node;
 
-    // page = buffer_pool_manager_->FetchPage(root_page_id_);
-    // page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
-    // ToString(page_node, buffer_pool_manager_);
+    page = buffer_pool_manager_->FetchPage(root_page_id_);
+    page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
+    ToString(page_node, buffer_pool_manager_);
   }
 
   return ok;
@@ -180,7 +180,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   if (new_size == leaf_page_node->GetMaxSize()) {
     B_PLUS_TREE_LEAF_PAGE_TYPE *new_leaf_page_node = split_leaf(leaf_page_node);
 
-    auto partition_key = leaf_page_node->KeyAt(leaf_page_node->GetSize() - 1);  // partition key
+    auto partition_key = new_leaf_page_node->KeyAt(0);  // partition key
 
     // recursively handle parent
     InsertIntoParent(leaf_page_node, partition_key, new_leaf_page_node, transaction);
