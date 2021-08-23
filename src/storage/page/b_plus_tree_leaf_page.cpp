@@ -40,7 +40,6 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, in
     BPlusTreePage::SetMaxSize(2);
   }
 
-
   next_page_id_ = INVALID_PAGE_ID;
 }
 
@@ -168,10 +167,30 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyNFrom(MappingType *items, int size) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool B_PLUS_TREE_LEAF_PAGE_TYPE::Lookup(const KeyType &key, ValueType *value, const KeyComparator &comparator) const {
-  // TODO binary search
-  for (int i = 0; i < BPlusTreePage::GetSize(); i++) {
-    if (comparator(key, array[i].first) == 0) {
-      *value = array[i].second;
+
+  int left = 0;
+  int right = BPlusTreePage::GetSize() - 1;
+  int mid;
+
+  // for (int i = 1; i < GetSize(); i++) {
+  //  LOG_DEBUG("key: %ld - array key: %ld ", key.ToString(), array[i].first.ToString());
+  //  LOG_DEBUG("compare: %d", comparator(array[i].first, key));
+  //}
+
+  while (left + 1 < right) {
+    mid = (left + right) / 2;
+    if (comparator(array[mid].first, key) == 0) {
+      *value = array[mid].second;
+      return true;
+    } else if (comparator(array[mid].first, key) == 1) {  // array[mid] > key
+      right = mid;
+    } else {
+      left = mid;
+    }
+  }
+  for (int i = left; i < right + 1; i++) {
+    if (comparator(array[i].first, key) == 0) {  // array[mid] > key
+      *value = array[mid].second;
       return true;
     }
   }
@@ -223,7 +242,6 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(const KeyType &key, const 
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveAllTo(BPlusTreeLeafPage *recipient) {
-  // TODO
 }
 
 /*****************************************************************************

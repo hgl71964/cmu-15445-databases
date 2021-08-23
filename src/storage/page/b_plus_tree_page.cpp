@@ -45,8 +45,8 @@ int BPlusTreePage::GetMinSize() const {
     return IsLeafPage() ? 1 : 2;  // empty tree = 1 node in root ... otherwise there are two nodes in root
   }
 
-  //if (IsLeafPage()) {
-    //return max_size_ / 2;
+  // if (IsLeafPage()) {
+  // return max_size_ / 2;
   //}
   return (max_size_ + 1) / 2;
 }

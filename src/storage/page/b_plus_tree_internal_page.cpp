@@ -33,7 +33,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
   BPlusTreePage::SetPageType(IndexPageType::INTERNAL_PAGE);
   BPlusTreePage::SetPageId(page_id);
   BPlusTreePage::SetParentPageId(parent_id);
-  //BPlusTreePage::SetMaxSize(max_size);
+  // BPlusTreePage::SetMaxSize(max_size);
 
   if (max_size > 4) {
     BPlusTreePage::SetMaxSize(max_size);
@@ -105,14 +105,14 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
   int left = 0;
   int right = BPlusTreePage::GetSize() - 1;
   int mid;
-  
-  //for (int i = 1; i < GetSize(); i++) {
+
+  // for (int i = 1; i < GetSize(); i++) {
   //  LOG_DEBUG("key: %ld - array key: %ld ", key.ToString(), array[i].first.ToString());
   //  LOG_DEBUG("compare: %d", comparator(array[i].first, key));
   //}
 
   while (left + 1 < right) {
-    mid = (left+right)/2;
+    mid = (left + right) / 2;
     if (comparator(array[mid].first, key) == 0) {
       return array[mid].second;
     } else if (comparator(array[mid].first, key) == 1) {  // array[mid] > key
@@ -122,14 +122,14 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
     }
   }
 
-  for (int i = left+1; i < right+1; i++) {
+  for (int i = left + 1; i < right + 1; i++) {
     if (comparator(array[i].first, key) == 1) {  // array[mid] > key
-      //LOG_DEBUG("key: %ld - id: %d ", key.ToString(), i);
-      return array[i-1].second;
+      // LOG_DEBUG("key: %ld - id: %d ", key.ToString(), i);
+      return array[i - 1].second;
     }
   }
 
-  //LOG_DEBUG("key: %ld - right id: %d ", key.ToString(), right);
+  // LOG_DEBUG("key: %ld - right id: %d ", key.ToString(), right);
   return array[right].second;
 }
 
@@ -159,7 +159,6 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::PopulateNewRoot(const ValueType &old_value,
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value, const KeyType &new_key,
                                                     const ValueType &new_value) {
-
   auto index = ValueIndex(old_value);
   BPlusTreePage::IncreaseSize(1);
 

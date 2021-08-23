@@ -126,7 +126,7 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     BPlusTreePage *page_node;
 
     page = buffer_pool_manager_->FetchPage(root_page_id_);
-    page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
+    page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
     ToString(page_node, buffer_pool_manager_);
   }
 
@@ -338,8 +338,6 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   int remain_size = leaf_page_node->RemoveAndDeleteRecord(key, comparator_);
   LOG_DEBUG(":%d", remain_size);
 
-  // TODO  + redist + merge
-
   // dirtY
   buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
 }
@@ -388,8 +386,7 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
  */
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
-void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
-}
+void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {}
 /*
  * Update root page if necessary
  * NOTE: size of root page can be less than min size and this method is only
@@ -401,9 +398,7 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
  * happend
  */
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
-  return false; 
-}
+bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) { return false; }
 
 /*****************************************************************************
  * INDEX ITERATOR
