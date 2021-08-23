@@ -287,11 +287,11 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
       reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page->GetData());
 
   // insert into parent, adopt
-  parent_page_node->InsertNodeAfter(old_node->GetPageId(), key, new_node->GetPageId());
+  auto new_size = parent_page_node->InsertNodeAfter(old_node->GetPageId(), key, new_node->GetPageId());
   new_node->SetParentPageId(parent_page_node->GetPageId());
 
   // after insert into parent, recursion check if full
-  if (parent_page_node->GetMaxSize() == parent_page_node->GetSize()) {
+  if (parent_page_node->GetMaxSize() == new_size) {
     // LOG_DEBUG("error - parent_page_node->GetMaxSize(): %d, parent_page_node->GetSize(): %d",
     //      parent_page_node->GetMaxSize(), parent_page_node->GetSize());
 
