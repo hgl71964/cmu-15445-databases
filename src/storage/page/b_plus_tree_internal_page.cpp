@@ -99,24 +99,31 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
   int left = 0;
   int right = BPlusTreePage::GetSize() - 1;
   int mid;
+  
+  //for (int i = 1; i < GetSize(); i++) {
+  //  LOG_DEBUG("key: %ld - array key: %ld ", key.ToString(), array[i].first.ToString());
+  //  LOG_DEBUG("compare: %d", comparator(array[i].first, key));
+  //}
 
   while (left + 1 < right) {
     mid = (left+right)/2;
     if (comparator(array[mid].first, key) == 0) {
       return array[mid].second;
-    } else if (comparator(array[mid].first, key) == 1) {  // key > array[mid]
-      left = mid;
-    } else {
+    } else if (comparator(array[mid].first, key) == 1) {  // array[mid] > key
       right = mid;
+    } else {
+      left = mid;
     }
   }
 
-  for (int i = left; i < right; i++) {
-    if (comparator(array[mid].first, key) == 0) {
-      return array[mid].second;
+  for (int i = left+1; i < right+1; i++) {
+    if (comparator(array[i].first, key) == 1) {  // array[mid] > key
+      //LOG_DEBUG("key: %ld - id: %d ", key.ToString(), i);
+      return array[i-1].second;
     }
   }
 
+  //LOG_DEBUG("key: %ld - right id: %d ", key.ToString(), right);
   return array[right].second;
 }
 
@@ -156,10 +163,6 @@ int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value, 
   }
   array[index + 1].first = new_key;
   array[index + 1].second = new_value;
-
-  // if (b_debug_msg) {
-  //  LOG_DEBUG("index: %d - key: %ld", index+1, new_key.ToString());
-  //}
 
   return BPlusTreePage::GetSize();
 }
