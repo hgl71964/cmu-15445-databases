@@ -185,7 +185,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   auto new_size = leaf_page_node->Insert(key, value, comparator_);
 
   // if full, split leaf node
-  if (new_size == leaf_page_node->GetMaxSize()) {
+  if (new_size >= leaf_page_node->GetMaxSize()) {
     B_PLUS_TREE_LEAF_PAGE_TYPE *new_leaf_page_node = split_leaf(leaf_page_node);
 
     auto partition_key = new_leaf_page_node->KeyAt(0);  // partition key
@@ -295,9 +295,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   new_node->SetParentPageId(parent_page_node->GetPageId());
 
   // after insert into parent, recursion check if full
-  if (new_size == parent_page_node->GetMaxSize()) {
-    // LOG_DEBUG("error - parent_page_node->GetMaxSize(): %d, parent_page_node->GetSize(): %d",
-    //      parent_page_node->GetMaxSize(), parent_page_node->GetSize());
+  if (new_size >= parent_page_node->GetMaxSize()) {
 
     auto *new_parent_page_node = Split(parent_page_node);
     auto partition_key = new_parent_page_node->KeyAt(0);  // partition key
@@ -336,7 +334,11 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
 
   // delete
   int remain_size = leaf_page_node->RemoveAndDeleteRecord(key, comparator_);
-  LOG_DEBUG(":%d", remain_size);
+
+  // redist merge
+  if (remain_size <= leaf_page_node->GetMinSize()) {
+    coalesceOrRedistribute(leaf_page_node, transaction);
+  }
 
   // dirtY
   buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
@@ -352,6 +354,28 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
+
+  bool redist = false;
+
+  // fetch sibling
+  auto sibling_id = node->GetNextPageId();
+  if (sibling_id == INVALID_PAGE_ID ) {
+    redist = true;
+  }
+  auto *sibling_page = buffer_pool_manager_->FetchPage(sibling_id);
+  auto *page_node = reinterpret_cast<N *>(sibling_page->GetData());
+
+  // redist or merge
+  if (page_node->GetSize() + node->GetSize() > node->GetMaxSize()) {
+    redist = true;
+  }
+
+  if (redist) {
+    Redistribute();
+  } else {
+    coalesce();
+  }
+
   return false;
 }
 

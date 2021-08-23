@@ -235,7 +235,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Remove(int index) {
   }
 
   // update self
-  BPlusTreePage::SetSize(size - 1);
+  BPlusTreePage::IncreaseSize(-1);
 }
 
 /*
