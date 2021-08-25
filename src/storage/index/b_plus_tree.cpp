@@ -441,6 +441,8 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
   auto *parent_node =
       reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(parent_page->GetData());
 
+  // leaf page
+  //
   if (node->IsLeafPage()) {
     if (index == 0) {  // neighbor at my right
       parent_node->SetKeyAt(1, neighbor_node->KeyAt(1));
@@ -464,7 +466,7 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
     }
   }
 
-  buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);  // FIXME
+  buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);  // parent pin - 1
 }
 /*
  * Update root page if necessary
