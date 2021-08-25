@@ -335,12 +335,8 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   int remain_size = leaf_page_node->RemoveAndDeleteRecord(key, comparator_);
 
   // redist or merge
-  if (remain_size <= leaf_page_node->GetMinSize()) {
-    if (leaf_page_node->IsRootPage()) {
-      // do nothing ?? 
-    } else{
-      bool hasDelete = CoalesceOrRedistribute(leaf_page_node, transaction);
-    }
+  if (remain_size < leaf_page_node->GetMinSize()) {
+    bool hasDelete = CoalesceOrRedistribute(leaf_page_node, transaction);
   }
 
   // TODO make sure all pages are unpinned
@@ -360,36 +356,38 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   int cur_index;
   auto should_delete = false;
 
+  // TODO if no parent? i.e root - termination of recursion
+  if (node->IsRootPage()) {
+    return false;
+  }
+
   // get parent
   auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
-  parent_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *> 
-                                          (parent_page->GetData());
+  parent_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(parent_page->GetData());
   cur_index = parent_node->ValueIndex(node->GetPageId());
 
   // get sibling
   if (cur_index == 0) {
     auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(1));
-    sibling_node = reinterpret_cast<N *> (tmp->GetData());
+    sibling_node = reinterpret_cast<N *>(tmp->GetData());
   } else {
-    auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(cur_index-1));
-    sibling_node = reinterpret_cast<N *> (tmp->GetData());
+    auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(cur_index - 1));
+    sibling_node = reinterpret_cast<N *>(tmp->GetData());
   }
-  
+
   // now node, sibling_node, parent_node open - need to unpin when done
   //
-  // see redist or merge 
+  // see redist or merge
   if (sibling_node->GetSize() + node->GetSize() > node->GetMaxSize()) {
     Redistribute(sibling_node, node, cur_index);
   } else {
-
     should_delete = true;
-    Coalesce(&sibling_node, &node, &parent_node,
-          cur_index, transaction);
+    Coalesce(&sibling_node, &node, &parent_node, cur_index, transaction);
   }
 
-  buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true); // FIXME
-  buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true); // FIXME
-  buffer_pool_manager_->UnpinPage(node->GetPageId(), true); // FIXME should_delete then unpin and delete?
+  buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);   // FIXME
+  buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);  // FIXME
+  buffer_pool_manager_->UnpinPage(node->GetPageId(), true);          // FIXME should_delete then unpin and delete?
 
   // FIXME
   return should_delete;
@@ -412,13 +410,13 @@ template <typename N>
 bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
                               BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> **parent, int index,
                               Transaction *transaction) {
-  
   if (node->IsLeafPage()) {
     (*node)->MoveAllTo(*neighbor_node);
-    buffer_pool_manager_->DeletePage((*node)->GetPageId());
+
+    buffer_pool_manager_->UnpinPage((*node)->GetPageId(), true);
+    buffer_pool_manager_->DeletePage((*node)->GetPageId());  // need to make sure pin count = 0
 
   } else {
-
   }
 
   // TODO recursively
@@ -438,12 +436,35 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
+  // get parent
+  auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
+  auto *parent_node =
+      reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(parent_page->GetData());
 
-  if (index == 0) {
-    neighbor_node->MoveFirstToEndOf(node);
+  if (node->IsLeafPage()) {
+    if (index == 0) {  // neighbor at my right
+      parent_node->SetKeyAt(1, neighbor_node->KeyAt(1));
+      neighbor_node->MoveFirstToEndOf(node);
+    } else {
+      parent_node->SetKeyAt(index, neighbor_node->KeyAt(neighbor_node->GetSize() - 1));
+      neighbor_node->MoveLastToFrontOf(node);
+    }
   } else {
-    neighbor_node->MoveLastToFrontOf(node);
+    // internal page
+    //
+
+    if (index == 0) {  // neighbor at my right
+      auto middle_key = parent_node->KeyAt(1);
+      parent_node->SetKeyAt(1, neighbor_node->KeyAt(1));
+      neighbor_node->MoveFirstToEndOf(node, middle_key, buffer_pool_manager_);
+    } else {
+      auto middle_key = parent_node->KeyAt(index);
+      parent_node->SetKeyAt(index, neighbor_node->KeyAt(neighbor_node->GetSize() - 1));
+      neighbor_node->MoveLastToFrontOf(node, middle_key, buffer_pool_manager_);
+    }
   }
+
+  buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);  // FIXME
 }
 /*
  * Update root page if necessary

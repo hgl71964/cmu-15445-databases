@@ -263,9 +263,8 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::RemoveAndReturnOnlyChild() {
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(BPlusTreeInternalPage *recipient, const KeyType &middle_key,
                                                BufferPoolManager *buffer_pool_manager) {
-
-                                                 // move to next page
-                                               }
+  // move to next page
+}
 
 /*****************************************************************************
  * REDISTRIBUTE
@@ -280,7 +279,17 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(BPlusTreeInternalPage *recipient,
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFirstToEndOf(BPlusTreeInternalPage *recipient, const KeyType &middle_key,
-                                                      BufferPoolManager *buffer_pool_manager) {}
+                                                      BufferPoolManager *buffer_pool_manager) {
+  recipient->CopyLastFrom(array[0], buffer_pool_manager);
+  recipient->SetKeyAt(recipient->GetSize() - 1,
+                      middle_key);  // it was using my dummy key, so after move it needs upadte
+
+  for (int i = 0; i < BPlusTreePage::GetSize() - 1; i++) {
+    array[i].first = array[i + 1].first;
+    array[i].second = array[i + 1].second;
+  }
+  BPlusTreePage::IncreaseSize(-1);
+}
 
 /* Append an entry at the end.
  * Since it is an internal page, the moved entry(page)'s parent needs to be updated.
@@ -309,7 +318,10 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyLastFrom(const MappingType &pair, Buffe
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveLastToFrontOf(BPlusTreeInternalPage *recipient, const KeyType &middle_key,
-                                                       BufferPoolManager *buffer_pool_manager) {}
+                                                       BufferPoolManager *buffer_pool_manager) {
+  recipient->CopyFirstFrom(array[BPlusTreePage::GetSize() - 1], buffer_pool_manager_);
+  recipient->SetKeyAt(1, middle_key);
+}
 
 /* Append an entry at the beginning.
  * Since it is an internal page, the moved entry(page)'s parent needs to be updated.
