@@ -337,9 +337,9 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   // redist or merge
   if (remain_size < leaf_page_node->GetMinSize()) {
     bool hasDelete = CoalesceOrRedistribute(leaf_page_node, transaction);
-  }
 
-  // TODO make sure all pages are unpinned
+    // TODO hasDelete?
+  }
 }
 
 /*
@@ -356,7 +356,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   int cur_index;
   auto should_delete = false;
 
-  // TODO if no parent? i.e root - termination of recursion
+  // TODO if root? - termination of recursion
   if (node->IsRootPage()) {
     return false;
   }
@@ -424,6 +424,7 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
   }
 
   // TODO recursively
+  CoalesceOrRedistribute(?, transaction);
 
   return false;
 }
