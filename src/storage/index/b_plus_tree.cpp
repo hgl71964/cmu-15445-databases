@@ -363,7 +363,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
   // get parent
   auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
-  parent_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(parent_page->GetData());
+  auto *parent_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(parent_page->GetData());
   cur_index = parent_node->ValueIndex(node->GetPageId());
 
   // get sibling
@@ -410,7 +410,11 @@ template <typename N>
 bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
                               BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> **parent, int index,
                               Transaction *transaction) {
-  if (node->IsLeafPage()) {
+  // see if leaf
+  auto *tmp_tree_page = reinterpret_cast<BPlusTreePage *> (node);
+  isLeaf = tmp_tree_page->IsLeafPage();
+
+  if (isLeaf) {
     (*node)->MoveAllTo(*neighbor_node);
 
     buffer_pool_manager_->UnpinPage((*node)->GetPageId(), true);
@@ -440,29 +444,47 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
   auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
   auto *parent_node =
       reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(parent_page->GetData());
+  
+  // see if leaf
+  auto *tmp_tree_page = reinterpret_cast<BPlusTreePage *> (node);
+  isLeaf = tmp_tree_page->IsLeafPage();
 
-  // leaf page
-  //
-  if (node->IsLeafPage()) {
+  if (isLeaf) {
+
+    // resolve leaf type
+    auto* tmp_n = 
+        reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(neighbor_node);
+    auto* tmp = 
+        reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(node);
+
     if (index == 0) {  // neighbor at my right
       parent_node->SetKeyAt(1, neighbor_node->KeyAt(1));
-      neighbor_node->MoveFirstToEndOf(node);
+      tmp_n->MoveFirstToEndOf(tmp);
+      //neighbor_node->MoveFirstToEndOf(node);
     } else {
       parent_node->SetKeyAt(index, neighbor_node->KeyAt(neighbor_node->GetSize() - 1));
-      neighbor_node->MoveLastToFrontOf(node);
+      tmp_n->MoveLastToFrontOf(tmp);
+      //neighbor_node->MoveLastToFrontOf(node);
     }
   } else {
-    // internal page
+    // resolve leaf type
     //
+
+    auto* tmp_n = 
+        reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(neighbor_node);
+    auto* tmp = 
+        reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(node);
 
     if (index == 0) {  // neighbor at my right
       auto middle_key = parent_node->KeyAt(1);
       parent_node->SetKeyAt(1, neighbor_node->KeyAt(1));
-      neighbor_node->MoveFirstToEndOf(node, middle_key, buffer_pool_manager_);
+      tmp_n->MoveFirstToEndOf(tmp, middle_key, buffer_pool_manager_);
+      //neighbor_node->MoveFirstToEndOf(node, middle_key, buffer_pool_manager_);
     } else {
       auto middle_key = parent_node->KeyAt(index);
       parent_node->SetKeyAt(index, neighbor_node->KeyAt(neighbor_node->GetSize() - 1));
-      neighbor_node->MoveLastToFrontOf(node, middle_key, buffer_pool_manager_);
+      tmp_n->MoveLastToFrontOf(tmp, middle_key, buffer_pool_manager_);
+      //neighbor_node->MoveLastToFrontOf(node, middle_key, buffer_pool_manager_);
     }
   }
 
