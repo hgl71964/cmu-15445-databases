@@ -236,7 +236,21 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(const KeyType &key, const 
  * to update the next_page id in the sibling page
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveAllTo(BPlusTreeLeafPage *recipient) {}
+void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveAllTo(BPlusTreeLeafPage *recipient) {
+
+  // because update next page id - so recipient left, me right
+  recipient->SetNextPageId(GetNextPageId());
+
+  auto start_index = recipient->GetSize();
+  auto my_size = BPlusTreePage::GetSize();
+  recipient->IncreaseSize(my_size);
+
+  for (int i = 0; i < my_size; i++) {
+    recipient->array[i+start_index] = array[i];
+  }
+
+  BPlusTreePage::SetSize(0);
+}
 
 /*****************************************************************************
  * REDISTRIBUTE

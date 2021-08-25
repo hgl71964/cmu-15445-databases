@@ -264,6 +264,23 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(BPlusTreeInternalPage *recipient, const KeyType &middle_key,
                                                BufferPoolManager *buffer_pool_manager) {
   // move to next page
+  //TODO
+  auto start_index = recipient->GetSize();
+  auto my_size = BPlusTreePage::GetSize();
+  recipient->IncreaseSize(my_size);
+
+  for (int i = 0; i < my_size; i++) {
+    recipient->array[i+start_index] = array[i];
+
+    // adopt
+    auto page_id = array[i].second;
+    auto *child_page = buffer_pool_manager->FetchPage(page_id);
+    BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *>(child_page->GetData());
+    b_plus_child_page->SetParentPageId(recipient->GetPageId());
+    buffer_pool_manager->UnpinPage(b_plus_child_page->GetPageId(), true);  // mark dirty
+  }
+
+  BPlusTreePage::SetSize(0);
 }
 
 /*****************************************************************************

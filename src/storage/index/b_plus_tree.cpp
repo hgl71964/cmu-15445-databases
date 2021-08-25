@@ -379,10 +379,15 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   //
   // see redist or merge
   if (sibling_node->GetSize() + node->GetSize() > node->GetMaxSize()) {
+
+    // no recursion within callee
     Redistribute(sibling_node, node, cur_index);
   } else {
-    should_delete = true;
+
+    // recursion within callee
     Coalesce(&sibling_node, &node, &parent_node, cur_index, transaction);
+
+    should_delete = true;
   }
 
   buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);   // FIXME
@@ -411,16 +416,41 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
                               BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> **parent, int index,
                               Transaction *transaction) {
   // see if leaf
-  auto *tmp_tree_page = reinterpret_cast<BPlusTreePage *> (node);
+  auto *tmp_tree_page = reinterpret_cast<BPlusTreePage *> (*node);
   isLeaf = tmp_tree_page->IsLeafPage();
 
   if (isLeaf) {
-    (*node)->MoveAllTo(*neighbor_node);
 
+    // resolve leaf type
+    auto* tmp_n = 
+        reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(*neighbor_node);
+    auto* tmp = 
+        reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(*node);
+
+    // inform parent TODO
+    
+    // move all to
+    N *remain_node;
+    if (index == 0) {
+      (*neighbor_node)->MoveAllTo(*node); // from sibling -> node
+      remain_node = *node;
+    } else {
+      (*node)->MoveAllTo(*neighbor_node); // from node -> sibling
+      remain_node = *neighbor_node;
+    }
+
+    //TODO
     buffer_pool_manager_->UnpinPage((*node)->GetPageId(), true);
     buffer_pool_manager_->DeletePage((*node)->GetPageId());  // need to make sure pin count = 0
 
   } else {
+    // resolve internal page type
+    //
+    auto* tmp_n = 
+        reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(*neighbor_node);
+    auto* tmp = 
+        reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(*node);
+
   }
 
   // TODO recursively
@@ -468,9 +498,8 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
       //neighbor_node->MoveLastToFrontOf(node);
     }
   } else {
-    // resolve leaf type
+    // resolve internal page type
     //
-
     auto* tmp_n = 
         reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(neighbor_node);
     auto* tmp = 
