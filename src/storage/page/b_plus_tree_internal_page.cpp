@@ -320,7 +320,7 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveLastToFrontOf(BPlusTreeInternalPage *recipient, const KeyType &middle_key,
                                                        BufferPoolManager *buffer_pool_manager) {
   recipient->CopyFirstFrom(array[BPlusTreePage::GetSize() - 1], buffer_pool_manager_);
-  recipient->SetKeyAt(1, middle_key);
+  recipient->SetKeyAt(1, middle_key);  // that was its dummy key, so it should be set to have meaningful value
   BPlusTreePage::IncreaseSize(-1);
 }
 
