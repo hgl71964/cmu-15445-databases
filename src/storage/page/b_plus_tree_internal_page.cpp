@@ -321,6 +321,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveLastToFrontOf(BPlusTreeInternalPage *re
                                                        BufferPoolManager *buffer_pool_manager) {
   recipient->CopyFirstFrom(array[BPlusTreePage::GetSize() - 1], buffer_pool_manager_);
   recipient->SetKeyAt(1, middle_key);
+  BPlusTreePage::IncreaseSize(-1);
 }
 
 /* Append an entry at the beginning.
