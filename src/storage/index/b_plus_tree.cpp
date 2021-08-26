@@ -417,6 +417,7 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
   // see if leaf
   auto *tmp_tree_page = reinterpret_cast<BPlusTreePage *>(*node);
   isLeaf = tmp_tree_page->IsLeafPage();
+  page_id_t del_id;
 
   if (isLeaf) {
     // resolve leaf type
@@ -424,7 +425,6 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
     auto *tmp = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(*node);
 
     // move all to
-    page_id_t del_id;
     if (index == 0) {
       tmp_n->MoveAllTo(tmp);  // from sibling -> node
       del_id = tmp_n->GetPageId();
@@ -434,12 +434,6 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
       del_id = tmp->GetPageId();
       (*parent)->Remove(index);  // inform parent
     }
-
-    // unpin both node and neighbor - leave parent open
-    buffer_pool_manager_->UnpinPage(tmp_n->GetPageId(), true);
-    buffer_pool_manager_->UnpinPage(tmp->GetPageId(), true);
-    buffer_pool_manager_->DeletePage(del_id);  // del the marked page
-
   } else {
     // resolve internal page type
     //
@@ -447,7 +441,6 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
     auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(*node);
 
     // move all to
-    page_id_t del_id;
     if (index == 0) {
       auto middle_key = (*parent)->KeyAt(1);
       tmp_n->MoveAllTo(tmp, middle_key, buffer_pool_manager_);  // from sibling -> node
@@ -459,12 +452,12 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
       del_id = tmp->GetPageId();
       (*parent)->Remove(index);  // inform parent
     }
-
-    // unpin both node and neighbor - leave parent open
-    buffer_pool_manager_->UnpinPage(tmp_n->GetPageId(), true);
-    buffer_pool_manager_->UnpinPage(tmp->GetPageId(), true);
-    buffer_pool_manager_->DeletePage(del_id);  // del the marked page
   }
+
+  // unpin both node and neighbor - leave parent open
+  buffer_pool_manager_->UnpinPage(tmp_n->GetPageId(), true);
+  buffer_pool_manager_->UnpinPage(tmp->GetPageId(), true);
+  buffer_pool_manager_->DeletePage(del_id);  // del the marked page
 
   // now node and neighbor has unpinned - parent is open
   // recursively check parent
@@ -474,7 +467,7 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
     // TODO hasDelete
   }
 
-  buffer_pool_manager_->UnpinPage((*parent)->GetPageId(), true);  // now - all - close
+  buffer_pool_manager_->UnpinPage((*parent)->GetPageId(), true);  // now all close
   return false;
 }
 
