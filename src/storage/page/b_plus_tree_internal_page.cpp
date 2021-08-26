@@ -264,7 +264,8 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(BPlusTreeInternalPage *recipient, const KeyType &middle_key,
                                                BufferPoolManager *buffer_pool_manager) {
   // move to next page
-  //TODO
+  // recipient left, me right
+  //
   auto start_index = recipient->GetSize();
   auto my_size = BPlusTreePage::GetSize();
   recipient->IncreaseSize(my_size);
@@ -279,6 +280,8 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(BPlusTreeInternalPage *recipient,
     b_plus_child_page->SetParentPageId(recipient->GetPageId());
     buffer_pool_manager->UnpinPage(b_plus_child_page->GetPageId(), true);  // mark dirty
   }
+
+  recipient->SetKeyAt(start_index, middle_key) // that was my dummy key
 
   BPlusTreePage::SetSize(0);
 }

@@ -358,6 +358,8 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
   // TODO if root? - termination of recursion
   if (node->IsRootPage()) {
+
+    // TODO
     return false;
   }
 
@@ -431,12 +433,15 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
     
     // move all to
     N *remain_node;
+    N *delete_node;
     if (index == 0) {
       (*neighbor_node)->MoveAllTo(*node); // from sibling -> node
       remain_node = *node;
+      delete_node = *neighbor_node;
     } else {
       (*node)->MoveAllTo(*neighbor_node); // from node -> sibling
       remain_node = *neighbor_node;
+      delete_node = *node;
     }
 
     //TODO
