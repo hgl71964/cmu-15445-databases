@@ -121,7 +121,7 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
   }
 
   for (int i = left + 1; i < right + 1; i++) {
-    if (comparator(array[i].first, key) == 1) {  // array[mid] > key
+    if (comparator(array[i].first, key) == 1) {  // array[i] > key
       // LOG_DEBUG("key: %ld - id: %d ", key.ToString(), i);
       return array[i - 1].second;
     }
