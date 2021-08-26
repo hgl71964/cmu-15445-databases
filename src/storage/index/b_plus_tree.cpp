@@ -386,11 +386,8 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   NOTE: now node, sibling_node, parent_node are open - but node will be closed by caller
   redist - merge have different unpin strategy
   **/
-  bool leaf_should_delete;
+  bool leaf_should_delete = false;
   if (sibling_node->GetSize() + node->GetSize() > node->GetMaxSize()) {
-    // redist does not delete node
-    leaf_should_delete = false;
-
     // no recursion within callee
     Redistribute(sibling_node, node, cur_index);
 
@@ -398,9 +395,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
   } else {
     // Coalesce has differnt move policy
-    if (cur_index == 0) {
-      leaf_should_delete = false;  // me <- sibling; do not delete me
-    } else {
+    if (cur_index != 0) {
       leaf_should_delete = true;  // sibling <- me; delete me
     }
 
@@ -544,28 +539,26 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
+  // case 2
   if (old_root_node->IsLeafPage()) {
-    if (old_root_node->GetSize() > 0) {
-      return false;
-    }
-
-    // case 2
-    return true;
-
-  } else {
-    if (old_root_node->GetSize() > 1) return false;
-
-    // case 1
-    auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(old_root_node);
-    page_id_t val = tmp->RemoveAndReturnOnlyChild();
-
-    // switch root to its child
-    auto *page = buffer_pool_manager_->FetchPage(val);
-    auto *new_root_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page->GetData());
-    root_page_id_ = new_root_node->GetPageId();
-    UpdateRootPageId(false);  // true for start a new tree
-    return true;
+    return (old_root_node->GetSize() == 0);
   }
+
+  // internal page
+  if (old_root_node->GetSize() > 1) {
+    return false;
+  }
+
+  // case 1
+  auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(old_root_node);
+  page_id_t val = tmp->RemoveAndReturnOnlyChild();
+
+  // switch root to its child
+  auto *page = buffer_pool_manager_->FetchPage(val);
+  auto *new_root_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page->GetData());
+  root_page_id_ = new_root_node->GetPageId();
+  UpdateRootPageId(false);  // true for start a new tree
+  return true;
 }
 
 /*****************************************************************************
