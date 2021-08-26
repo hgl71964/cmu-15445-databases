@@ -271,7 +271,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(BPlusTreeInternalPage *recipient,
   recipient->IncreaseSize(my_size);
 
   for (int i = 0; i < my_size; i++) {
-    recipient->array[i+start_index] = array[i];
+    recipient->array[i + start_index] = array[i];
 
     // adopt
     auto page_id = array[i].second;
@@ -281,9 +281,9 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(BPlusTreeInternalPage *recipient,
     buffer_pool_manager->UnpinPage(b_plus_child_page->GetPageId(), true);  // mark dirty
   }
 
-  recipient->SetKeyAt(start_index, middle_key) // that was my dummy key
+  recipient->SetKeyAt(start_index, middle_key)  // that was my dummy key
 
-  BPlusTreePage::SetSize(0);
+      BPlusTreePage::SetSize(0);
 }
 
 /*****************************************************************************

@@ -237,7 +237,6 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(const KeyType &key, const 
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveAllTo(BPlusTreeLeafPage *recipient) {
-
   // because update next page id - so recipient left, me right
   recipient->SetNextPageId(GetNextPageId());
 
@@ -246,7 +245,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveAllTo(BPlusTreeLeafPage *recipient) {
   recipient->IncreaseSize(my_size);
 
   for (int i = 0; i < my_size; i++) {
-    recipient->array[i+start_index] = array[i];
+    recipient->array[i + start_index] = array[i];
   }
 
   BPlusTreePage::SetSize(0);
