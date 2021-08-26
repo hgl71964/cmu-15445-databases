@@ -363,8 +363,8 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
   // root - termination of recursion
   if (node->IsRootPage()) {
-    auto *old_root_node = reinterpret_cast<BPlusTreePage *>(node);
-    return AdjustRoot(old_root_node);
+    //auto *old_root_node = reinterpret_cast<BPlusTreePage *>(node);
+    return AdjustRoot(node);
   }
 
   // get parent
