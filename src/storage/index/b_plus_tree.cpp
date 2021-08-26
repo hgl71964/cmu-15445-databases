@@ -363,7 +363,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
   // root - termination of recursion
   if (node->IsRootPage()) {
-    auto *old_root_node = reinterpret_cast<BPlusTreePage *> (node);
+    auto *old_root_node = reinterpret_cast<BPlusTreePage *>(node);
     return AdjustRoot(old_root_node);
   }
 
@@ -375,10 +375,10 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
   // get sibling
   if (cur_index == 0) {
-    auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(1)); // get right sibling
+    auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(1));  // get right sibling
     sibling_node = reinterpret_cast<N *>(tmp->GetData());
   } else {
-    auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(cur_index - 1)); // get left sibling
+    auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(cur_index - 1));  // get left sibling
     sibling_node = reinterpret_cast<N *>(tmp->GetData());
   }
 
@@ -388,35 +388,33 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   **/
   bool leaf_should_delete;
   if (sibling_node->GetSize() + node->GetSize() > node->GetMaxSize()) {
-
     // redist does not delete node
     leaf_should_delete = false;
 
     // no recursion within callee
     Redistribute(sibling_node, node, cur_index);
 
-    buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);   
-    buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);  
+    buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
+    buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
   } else {
-
     // Coalesce has differnt move policy
-    if (cur_index==0) {
-      leaf_should_delete = false; // me <- sibling; do not delete me
+    if (cur_index == 0) {
+      leaf_should_delete = false;  // me <- sibling; do not delete me
     } else {
-      leaf_should_delete = true; // sibling <- me; delete me
+      leaf_should_delete = true;  // sibling <- me; delete me
     }
 
     // recursion within callee
     bool parent_should_del = Coalesce(&sibling_node, &node, &parent_node, cur_index, transaction);
 
     // unpin sibling + parent and del parent
-    buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);  
-    buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);   
+    buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
+    buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
     if (parent_should_del) {
-      buffer_pool_manager_->DeletePage(parent_node->GetPageId());   
+      buffer_pool_manager_->DeletePage(parent_node->GetPageId());
     }
-    if (index==0) {  // sibling need to be deleted
-      buffer_pool_manager_->DeletePage(sibling_node->GetPageId());   
+    if (cur_index == 0) {  // sibling need to be deleted - else our caller will handle
+      buffer_pool_manager_->DeletePage(sibling_node->GetPageId());
     }
   }
   return leaf_should_delete;
@@ -439,7 +437,7 @@ template <typename N>
 bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
                               BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> **parent, int index,
                               Transaction *transaction) {
-  auto isLeaf = node->IsLeafPage();
+  auto isLeaf = (*node)->IsLeafPage();
   if (isLeaf) {
     // resolve leaf type
     auto *tmp_n = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(*neighbor_node);
@@ -448,9 +446,9 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
     // move all to
     if (index == 0) {
       tmp_n->MoveAllTo(tmp);  // from sibling -> node
-      (*parent)->Remove(1);  // inform parent
+      (*parent)->Remove(1);   // inform parent
     } else {
-      tmp->MoveAllTo(tmp_n);  // from node -> sibling
+      tmp->MoveAllTo(tmp_n);     // from node -> sibling
       (*parent)->Remove(index);  // inform parent
     }
   } else {
@@ -463,11 +461,11 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
     if (index == 0) {
       auto middle_key = (*parent)->KeyAt(1);
       tmp_n->MoveAllTo(tmp, middle_key, buffer_pool_manager_);  // from sibling -> node
-      (*parent)->Remove(1);  // inform parent
+      (*parent)->Remove(1);                                     // inform parent
     } else {
       auto middle_key = (*parent)->KeyAt(index);
       tmp->MoveAllTo(tmp_n, middle_key, buffer_pool_manager_);  // from node -> sibling
-      (*parent)->Remove(index);  // inform parent
+      (*parent)->Remove(index);                                 // inform parent
     }
   }
 
@@ -545,10 +543,9 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
  * happend
  */
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) { 
+bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   if (old_root_node->IsLeafPage()) {
-
-    if (old_root_node->GetSize() > 0) {  
+    if (old_root_node->GetSize() > 0) {
       return false;
     }
 
@@ -556,22 +553,19 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
     return true;
 
   } else {
-
-    if (old_root_node->GetSize() > 1) 
-      return false;
+    if (old_root_node->GetSize() > 1) return false;
 
     // case 1
-    auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *> (old_root_node);
+    auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(old_root_node);
     page_id_t val = tmp->RemoveAndReturnOnlyChild();
 
     // switch root to its child
     auto *page = buffer_pool_manager_->FetchPage(val);
-    auto *new_root_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *> (page->GetData());
-    root_page_id_ = new_root_node->GetPageId():
+    auto *new_root_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page->GetData());
+    root_page_id_ = new_root_node->GetPageId();
     UpdateRootPageId(false);  // true for start a new tree
     return true;
   }
-
 }
 
 /*****************************************************************************

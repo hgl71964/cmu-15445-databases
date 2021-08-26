@@ -281,9 +281,9 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(BPlusTreeInternalPage *recipient,
     buffer_pool_manager->UnpinPage(b_plus_child_page->GetPageId(), true);  // mark dirty
   }
 
-  recipient->SetKeyAt(start_index, middle_key)  // that was my dummy key
+  recipient->SetKeyAt(start_index, middle_key);  // that was my dummy key
 
-      BPlusTreePage::SetSize(0);
+  BPlusTreePage::SetSize(0);
 }
 
 /*****************************************************************************
@@ -339,7 +339,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyLastFrom(const MappingType &pair, Buffe
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveLastToFrontOf(BPlusTreeInternalPage *recipient, const KeyType &middle_key,
                                                        BufferPoolManager *buffer_pool_manager) {
-  recipient->CopyFirstFrom(array[BPlusTreePage::GetSize() - 1], buffer_pool_manager_);
+  recipient->CopyFirstFrom(array[BPlusTreePage::GetSize() - 1], buffer_pool_manager);
   recipient->SetKeyAt(1, middle_key);  // that was its dummy key, so it should be set to have meaningful value
   BPlusTreePage::IncreaseSize(-1);
 }
