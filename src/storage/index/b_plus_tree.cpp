@@ -372,7 +372,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
       reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(parent_page->GetData());
   cur_index = parent_node->ValueIndex(node->GetPageId());
 
-  // get sibling
+  // get sibling - if node is leftmost, get right sibling - otherwise get left sibling
   if (cur_index == 0) {
     auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(1));  // get right sibling
     sibling_node = reinterpret_cast<N *>(tmp->GetData());
@@ -383,27 +383,31 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
   /**
   NOTE: now node, sibling_node, parent_node are open - but node will be closed by caller
+  NOTE: i.e. sibling_node and parent_node will be closed here
   redist - merge have different unpin strategy
   **/
-  bool leaf_should_delete = false;
+  bool node_should_delete = false;
   if (sibling_node->GetSize() + node->GetSize() > node->GetMaxSize()) {
     // no recursion within callee
     Redistribute(sibling_node, node, cur_index);
 
+    // close
     buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
     buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
   } else {
     // Coalesce has differnt move policy
     if (cur_index != 0) {
-      leaf_should_delete = true;  // sibling <- me; delete me
+      node_should_delete = true;  // sibling <- me; delete me
     }
 
-    // recursion within callee
+    // maybe recursion within callee
     bool parent_should_del = Coalesce(&sibling_node, &node, &parent_node, cur_index, transaction);
 
-    // unpin sibling + parent and del parent
+    // close
     buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
     buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
+
+    // del
     if (parent_should_del) {
       buffer_pool_manager_->DeletePage(parent_node->GetPageId());
     }
@@ -411,7 +415,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
       buffer_pool_manager_->DeletePage(sibling_node->GetPageId());
     }
   }
-  return leaf_should_delete;
+  return node_should_delete;
 }
 
 /*
@@ -434,10 +438,11 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
   auto isLeaf = (*node)->IsLeafPage();
   if (isLeaf) {
     // resolve leaf type
+    //
     auto *tmp_n = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(*neighbor_node);
     auto *tmp = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(*node);
 
-    // move all to
+    // merge
     if (index == 0) {
       tmp_n->MoveAllTo(tmp);  // from sibling -> node
       (*parent)->Remove(1);   // inform parent
@@ -451,7 +456,7 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
     auto *tmp_n = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(*neighbor_node);
     auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(*node);
 
-    // move all to
+    // merge
     if (index == 0) {
       auto middle_key = (*parent)->KeyAt(1);
       tmp_n->MoveAllTo(tmp, middle_key, buffer_pool_manager_);  // from sibling -> node
@@ -463,11 +468,11 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
     }
   }
 
-  // recursively check parent
+  // recursively check parent - now parent is 'leaf'
   if ((*parent)->GetSize() < (*parent)->GetMinSize()) {
     return CoalesceOrRedistribute(*parent, transaction);
   }
-  return false;
+  return false;  // if parent is fine, then do not delete parent
 }
 
 /*
@@ -487,22 +492,19 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
   auto *parent_node =
       reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(parent_page->GetData());
 
-  // see if leaf
   bool isLeaf = node->IsLeafPage();
-
   if (isLeaf) {
     // resolve leaf type
+    //
     auto *tmp_n = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(neighbor_node);
     auto *tmp = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(node);
 
     if (index == 0) {  // neighbor at my right
       parent_node->SetKeyAt(1, neighbor_node->KeyAt(1));
       tmp_n->MoveFirstToEndOf(tmp);
-      // neighbor_node->MoveFirstToEndOf(node);
     } else {
       parent_node->SetKeyAt(index, neighbor_node->KeyAt(neighbor_node->GetSize() - 1));
       tmp_n->MoveLastToFrontOf(tmp);
-      // neighbor_node->MoveLastToFrontOf(node);
     }
   } else {
     // resolve internal page type
@@ -510,21 +512,18 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
     auto *tmp_n = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(neighbor_node);
     auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(node);
 
-    if (index == 0) {  // neighbor at my right
+    if (index == 0) {
       auto middle_key = parent_node->KeyAt(1);
       parent_node->SetKeyAt(1, neighbor_node->KeyAt(1));
       tmp_n->MoveFirstToEndOf(tmp, middle_key, buffer_pool_manager_);
-      // neighbor_node->MoveFirstToEndOf(node, middle_key, buffer_pool_manager_);
     } else {
       auto middle_key = parent_node->KeyAt(index);
       parent_node->SetKeyAt(index, neighbor_node->KeyAt(neighbor_node->GetSize() - 1));
       tmp_n->MoveLastToFrontOf(tmp, middle_key, buffer_pool_manager_);
-      // neighbor_node->MoveLastToFrontOf(node, middle_key, buffer_pool_manager_);
     }
   }
-
-  buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);  // parent pin - 1
-  // sibling - node - parent remains open
+  // parent pin - 1, because we open again in this function
+  buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
 }
 /*
  * Update root page if necessary
@@ -543,16 +542,16 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
     return (old_root_node->GetSize() == 0);
   }
 
-  // internal page
+  // internal page - if have more than one child - it is ok
   if (old_root_node->GetSize() > 1) {
     return false;
   }
 
-  // case 1
+  // case 1 - root has only one child
   auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(old_root_node);
   page_id_t val = tmp->RemoveAndReturnOnlyChild();
 
-  // switch root to its child
+  // switch root to its only child
   auto *page = buffer_pool_manager_->FetchPage(val);
   auto *new_root_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page->GetData());
   root_page_id_ = new_root_node->GetPageId();
