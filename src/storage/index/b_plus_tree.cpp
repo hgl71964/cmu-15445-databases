@@ -42,10 +42,7 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::IsEmpty() const {
-  mu_.lock();
-  auto ok = (root_page_id_ == INVALID_PAGE_ID);
-  mu_.unlock();
-  return ok;
+  return root_page_id_ == INVALID_PAGE_ID;
 }
 /*****************************************************************************
  * SEARCH
@@ -560,10 +557,10 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   auto *page = buffer_pool_manager_->FetchPage(val);
   auto *new_root_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page->GetData());
 
-  mu_.lock()
+  mu_.lock();
   root_page_id_ = new_root_node->GetPageId();
   UpdateRootPageId(false);  // true for start a new tree
-  mu_.unlock()
+  mu_.unlock();
 
   return true;
 }
@@ -654,7 +651,7 @@ Page *BPLUSTREE_TYPE::new_root(bool new_tree) {
  * the left most leaf page
  */
 INDEX_TEMPLATE_ARGUMENTS
-Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
+Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost, Transaction *transaction) {
   // throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
   if (IsEmpty()) {
     return nullptr;
