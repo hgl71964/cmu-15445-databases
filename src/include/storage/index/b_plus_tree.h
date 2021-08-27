@@ -13,6 +13,7 @@
 #include <queue>
 #include <string>
 #include <vector>
+#include <mutex>               // NOLINT
 
 #include "concurrency/transaction.h"
 #include "storage/index/index_iterator.h"
@@ -121,6 +122,8 @@ class BPlusTree {
   KeyComparator comparator_;
   int leaf_max_size_;
   int internal_max_size_;
+
+  std::mutex mu_;
 };
 
 }  // namespace bustub
