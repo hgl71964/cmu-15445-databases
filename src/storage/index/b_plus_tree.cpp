@@ -565,7 +565,7 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
 }
 
 /*****************************************************************************
- * INDEX ITERATOR
+ * INDEX ITERATOR - TODO may need to change completely for concurrent access
  *****************************************************************************/
 /*
  * Input parameter is void, find the leaftmost leaf page first, then construct
