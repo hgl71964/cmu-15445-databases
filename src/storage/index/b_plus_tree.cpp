@@ -165,7 +165,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction) {
-  auto *page = FindLeafPage(key, false);
+  auto *page = WRITE_FindLeafPage(key, false, transaction);
   if (page == nullptr) {
     LOG_DEBUG("b+ tree - InsertIntoLeaf");
     throw Exception(ExceptionType::INVALID, "b+ tree - InsertIntoLeaf");
@@ -323,7 +323,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     return;
   }
   // fetch
-  auto *page = FindLeafPage(key, false);
+  auto *page = WRITE_FindLeafPage(key, false, transaction);
   if (page == nullptr) {
     LOG_DEBUG("b+ tree - InsertIntoLeaf");
     throw Exception(ExceptionType::INVALID, "remove");
@@ -575,7 +575,7 @@ INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
   // return INDEXITERATOR_TYPE();
   KeyType k;
-  auto *page = FindLeafPage(k, true);
+  auto *page = READ_FindLeafPage(k, true);
   if (page == nullptr) {
     LOG_DEBUG("begin");
     throw Exception(ExceptionType::INVALID, "begin");
@@ -595,7 +595,7 @@ INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
   // return INDEXITERATOR_TYPE();
 
-  auto *page = FindLeafPage(key, false);
+  auto *page = READ_FindLeafPage(key, false);
   if (page == nullptr) {
     LOG_DEBUG("begin");
     throw Exception(ExceptionType::INVALID, "begin");
@@ -645,6 +645,7 @@ Page *BPLUSTREE_TYPE::new_root(bool new_tree) {
   return page;
 }
 
+// @return: page with read latch
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Transaction *transaction) {
   mu_.lock();
@@ -654,13 +655,15 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
   }
 
   Page *page;
+  Page *childPage;
   BPlusTreePage *page_node;
   page_id_t val;
 
-  // root
+  // root - and latch
   page = buffer_pool_manager_->FetchPage(root_page_id_);
   mu_.unlock();
 
+  page->RLatch();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
   // if  root and leaf - new tree - return directly
@@ -671,9 +674,16 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
 
     val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
 
+    // get child
+    childPage = buffer_pool_manager_->FetchPage(val);
+    childPage->RLatch();
+
     // unpin current page and find next
+    page->RUnlatch();
     buffer_pool_manager_->UnpinPage(page_node->GetPageId(), false);
-    page = buffer_pool_manager_->FetchPage(val);
+
+    // swap
+    page = childPage;
     page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
   }
   return page;
