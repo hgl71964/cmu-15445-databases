@@ -69,7 +69,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   //  ToString(page_node, buffer_pool_manager_);
   //}
 
-  Page *page = FindLeafPage(key, false, OpType::READ, transaction);
+  Page *page = FindLeafPage(key, false);
 
   if (page == nullptr) {
     return false;
@@ -649,10 +649,10 @@ Page *BPLUSTREE_TYPE::new_root(bool new_tree) {
  * the left most leaf page
  */
 INDEX_TEMPLATE_ARGUMENTS
-Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost, OpType op, Transaction *transaction) {
+Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   // throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
 
-  // protect page id
+  // protect root
   mu_.lock();
   if (IsEmpty()) {
     mu_.unlock();
@@ -667,7 +667,6 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost, OpType op,
   page = buffer_pool_manager_->FetchPage(root_page_id_);
   mu_.unlock();
 
-  page->RLatch();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
   // if  root and leaf - new tree - return directly

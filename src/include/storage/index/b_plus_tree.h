@@ -80,9 +80,9 @@ class BPlusTree {
   // read data from file and remove one by one
   void RemoveFromFile(const std::string &file_name, Transaction *transaction = nullptr);
   // expose for test purpose
-  // Page *FindLeafPage(const KeyType &key, bool leftMost = false);
-  Page *FindLeafPage(const KeyType &key, bool leftMost = false, OpType op = OpType::READ,
-                     Transaction *transaction = nullptr);
+  Page *FindLeafPage(const KeyType &key, bool leftMost = false);
+  // Page *FindLeafPage(const KeyType &key, bool leftMost = false, OpType op = OpType::READ,
+  //                   Transaction *transaction = nullptr);
 
  private:
   // self
