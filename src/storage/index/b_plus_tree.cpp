@@ -71,7 +71,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   //  ToString(page_node, buffer_pool_manager_);
   //}
 
-  Page *page = FindLeafPage(key, false, transaction);
+  Page *page = FindLeafPage(key, false, OpType::READ, transaction);
 
   if (page == nullptr) {
     return false;
@@ -651,7 +651,7 @@ Page *BPLUSTREE_TYPE::new_root(bool new_tree) {
  * the left most leaf page
  */
 INDEX_TEMPLATE_ARGUMENTS
-Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost, Transaction *transaction) {
+Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost, OpType op, Transaction *transaction) {
   // throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
 
   // protect page id
