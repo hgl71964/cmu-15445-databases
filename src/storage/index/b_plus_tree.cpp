@@ -69,7 +69,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   //  ToString(page_node, buffer_pool_manager_);
   //}
 
-  Page *page = FindLeafPage(key, false);
+  Page *page = READ_FindLeafPage(key, false, transaction);
 
   if (page == nullptr) {
     return false;
@@ -644,6 +644,75 @@ Page *BPLUSTREE_TYPE::new_root(bool new_tree) {
 
   return page;
 }
+
+INDEX_TEMPLATE_ARGUMENTS
+Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Transaction *transaction) {
+  mu_.lock();
+  if (IsEmpty()) {
+    mu_.unlock();
+    return nullptr;
+  }
+
+  Page *page;
+  BPlusTreePage *page_node;
+  page_id_t val;
+
+  // root
+  page = buffer_pool_manager_->FetchPage(root_page_id_);
+  mu_.unlock();
+
+  page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+
+  // if  root and leaf - new tree - return directly
+  // if root ok, then recursively search
+  while (!page_node->IsLeafPage()) {
+    // data key must exist in internal node
+    auto *internal_page_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page_node);
+
+    val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
+
+    // unpin current page and find next
+    buffer_pool_manager_->UnpinPage(page_node->GetPageId(), false);
+    page = buffer_pool_manager_->FetchPage(val);
+    page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+  }
+  return page;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, Transaction *transaction) {
+  mu_.lock();
+  if (IsEmpty()) {
+    mu_.unlock();
+    return nullptr;
+  }
+
+  Page *page;
+  BPlusTreePage *page_node;
+  page_id_t val;
+
+  // root
+  page = buffer_pool_manager_->FetchPage(root_page_id_);
+  mu_.unlock();
+
+  page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+
+  // if  root and leaf - new tree - return directly
+  // if root ok, then recursively search
+  while (!page_node->IsLeafPage()) {
+    // data key must exist in internal node
+    auto *internal_page_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page_node);
+
+    val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
+
+    // unpin current page and find next
+    buffer_pool_manager_->UnpinPage(page_node->GetPageId(), false);
+    page = buffer_pool_manager_->FetchPage(val);
+    page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+  }
+  return page;
+}
+
 /*
  * Find leaf page containing particular key, if leftMost flag == true, find
  * the left most leaf page
