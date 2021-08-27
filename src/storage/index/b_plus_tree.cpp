@@ -91,6 +91,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   }
 
   // done using; not dirty
+  page->RUnlatch();
   buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
   return ok;
 }
@@ -583,7 +584,12 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
 
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
 
-  return INDEXITERATOR_TYPE(leaf_page_node->GetPageId(), buffer_pool_manager_, 0);
+  auto itr = INDEXITERATOR_TYPE(leaf_page_node->GetPageId(), buffer_pool_manager_, 0);
+
+  page->RUnlatch();
+  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
+
+  return itr;
 }
 
 /*
@@ -601,8 +607,11 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
     throw Exception(ExceptionType::INVALID, "begin");
   }
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
-
   auto itr = INDEXITERATOR_TYPE(leaf_page_node->GetPageId(), buffer_pool_manager_, 0);
+
+  page->RUnlatch();
+  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
+
 
   while (comparator_((*itr).first, key) != 0) {
     ++itr;
