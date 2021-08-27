@@ -166,6 +166,8 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction) {
+
+  // fetch - page hold WRITE latch
   auto *page = WRITE_FindLeafPage(key, false, WType::INSERT, transaction);
   if (page == nullptr) {
     LOG_DEBUG("b+ tree - InsertIntoLeaf");
@@ -323,7 +325,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   if (IsEmpty()) {
     return;
   }
-  // fetch
+  // fetch - page hold WRITE latch
   auto *page = WRITE_FindLeafPage(key, false, WType::DELETE, transaction);
   if (page == nullptr) {
     LOG_DEBUG("b+ tree - InsertIntoLeaf");
@@ -743,8 +745,8 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
 
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::isSafe(WType op, Page *childPage) {
-  //auto *node = reinterpret_cast<BPlusTreePage *>(childPage->GetData());
-  //if (op == WType::INSERT) {
+  // auto *node = reinterpret_cast<BPlusTreePage *>(childPage->GetData());
+  // if (op == WType::INSERT) {
   //  // TODO
   //} else {
   //}
