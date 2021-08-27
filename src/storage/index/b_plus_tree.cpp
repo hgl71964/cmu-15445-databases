@@ -38,7 +38,7 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
 }
 
 /*
- * Helper function to decide whether current b+tree is empty
+ * Helper function to decide whether current b+tree is empty - CALLER HOLD lock
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::IsEmpty() const {
@@ -71,7 +71,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   //  ToString(page_node, buffer_pool_manager_);
   //}
 
-  Page *page = FindLeafPage(key, false);
+  Page *page = FindLeafPage(key, false, transaction);
 
   if (page == nullptr) {
     return false;
@@ -653,7 +653,11 @@ Page *BPLUSTREE_TYPE::new_root(bool new_tree) {
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost, Transaction *transaction) {
   // throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
+
+  // protect page id
+  mu_.lock();
   if (IsEmpty()) {
+    mu_.unlock();
     return nullptr;
   }
 
@@ -663,6 +667,9 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost, Transactio
 
   // root
   page = buffer_pool_manager_->FetchPage(root_page_id_);
+  mu_.unlock();
+
+  page->RLatch();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
   // if  root and leaf - new tree - return directly
