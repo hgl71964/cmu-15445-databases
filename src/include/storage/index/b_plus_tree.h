@@ -24,8 +24,6 @@ namespace bustub {
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
 
-// enum class OpType { READ = 0, INSERT, DELETE };
-
 /**
  * Main class providing the API for the Interactive B+ Tree.
  *
@@ -82,12 +80,14 @@ class BPlusTree {
   // expose for test purpose
   Page *FindLeafPage(const KeyType &key, bool leftMost = false);
   Page *READ_FindLeafPage(const KeyType &key, bool leftMost = false, Transaction *transaction = nullptr);
-  Page *WRITE_FindLeafPage(const KeyType &key, bool leftMost = false, Transaction *transaction = nullptr);
+  Page *WRITE_FindLeafPage(const KeyType &key, bool leftMost, WType op, Transaction *transaction);
 
  private:
   // self
   Page *new_root(bool new_tree);
   B_PLUS_TREE_LEAF_PAGE_TYPE *split_leaf(B_PLUS_TREE_LEAF_PAGE_TYPE *node);
+  bool isSafe(WType op, Page *childPage);
+  void free_ancestor(Transaction *transaction);
   // self
 
   void StartNewTree(const KeyType &key, const ValueType &value);

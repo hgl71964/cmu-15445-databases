@@ -166,7 +166,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction) {
-  auto *page = WRITE_FindLeafPage(key, false, transaction);
+  auto *page = WRITE_FindLeafPage(key, false, WType::INSERT, transaction);
   if (page == nullptr) {
     LOG_DEBUG("b+ tree - InsertIntoLeaf");
     throw Exception(ExceptionType::INVALID, "b+ tree - InsertIntoLeaf");
@@ -324,7 +324,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     return;
   }
   // fetch
-  auto *page = WRITE_FindLeafPage(key, false, transaction);
+  auto *page = WRITE_FindLeafPage(key, false, WType::DELETE, transaction);
   if (page == nullptr) {
     LOG_DEBUG("b+ tree - InsertIntoLeaf");
     throw Exception(ExceptionType::INVALID, "remove");
@@ -698,7 +698,7 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, Transaction *transaction) {
+Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WType op, Transaction *transaction) {
   mu_.lock();
   if (IsEmpty()) {
     mu_.unlock();
@@ -706,37 +706,66 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, Tran
   }
 
   Page *page;
-  // Page *childPage;
+  Page *childPage;
   BPlusTreePage *page_node;
   page_id_t val;
 
-  // root
+  // root - if root is leaf, hold write latch and return
   page = buffer_pool_manager_->FetchPage(root_page_id_);
   mu_.unlock();
-
-  page->RLatch();
+  page->WLatch();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
-  // if root and leaf - return with write latch XXX should add to transaction??
-  if (page_node->IsLeafPage()) {
-    page->RUnlatch();
-    page->WLatch();
-    return page;
-  }
-
-  // if root ok, read latch and traverse down
+  // if root ok, traverse down
   while (!page_node->IsLeafPage()) {
-    // data key must exist in internal node
     auto *internal_page_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page_node);
 
     val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
 
-    // unpin current page and find next
-    buffer_pool_manager_->UnpinPage(page_node->GetPageId(), false);
-    page = buffer_pool_manager_->FetchPage(val);
+    // get child
+    childPage = buffer_pool_manager_->FetchPage(val);
+    childPage->WLatch();
+
+    // add current page to transactions
+    transaction->AddIntoPageSet(page);
+
+    // traverse
+    page = childPage;
     page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+
+    // check
+    if (isSafe(op, childPage)) {
+      free_ancestor(transaction);
+    }
   }
   return page;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+bool BPLUSTREE_TYPE::isSafe(WType op, Page *childPage) {
+  //auto *node = reinterpret_cast<BPlusTreePage *>(childPage->GetData());
+  //if (op == WType::INSERT) {
+  //  // TODO
+  //} else {
+  //}
+
+  return true;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction) {
+  // this is a pointer
+  std::shared_ptr<std::deque<Page *>> page_set = transaction->GetPageSet();
+
+  while (!page_set->empty()) {
+    Page *p = page_set->front();
+    p->WUnlatch();
+    buffer_pool_manager_->UnpinPage(p->GetPageId(), false);
+
+    // notice this clears elem in transaction - because page_set is a pointer
+    page_set->pop_front();
+  }
+  // transaction->GetPageSet()->clear();
 }
 
 /*
