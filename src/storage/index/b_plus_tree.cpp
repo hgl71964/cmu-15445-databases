@@ -612,7 +612,6 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
   page->RUnlatch();
   buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
 
-
   while (comparator_((*itr).first, key) != 0) {
     ++itr;
   }
@@ -707,6 +706,7 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, Tran
   }
 
   Page *page;
+  // Page *childPage;
   BPlusTreePage *page_node;
   page_id_t val;
 
@@ -714,10 +714,17 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, Tran
   page = buffer_pool_manager_->FetchPage(root_page_id_);
   mu_.unlock();
 
+  page->RLatch();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
-  // if  root and leaf - new tree - return directly
-  // if root ok, then recursively search
+  // if root and leaf - return with write latch XXX should add to transaction??
+  if (page_node->IsLeafPage()) {
+    page->RUnlatch();
+    page->WLatch();
+    return page;
+  }
+
+  // if root ok, read latch and traverse down
   while (!page_node->IsLeafPage()) {
     // data key must exist in internal node
     auto *internal_page_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page_node);
