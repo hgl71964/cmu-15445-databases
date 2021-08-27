@@ -41,9 +41,7 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
  * Helper function to decide whether current b+tree is empty - CALLER HOLD lock
  */
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::IsEmpty() const {
-  return root_page_id_ == INVALID_PAGE_ID;
-}
+bool BPLUSTREE_TYPE::IsEmpty() const { return root_page_id_ == INVALID_PAGE_ID; }
 /*****************************************************************************
  * SEARCH
  *****************************************************************************/
@@ -124,12 +122,12 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 
   if (b_debug_msg) {
     LOG_DEBUG("key: %ld - val_slot: %d - ok: %d", key.ToString(), value.GetSlotNum(), ok);
-    //Page *page;
-    //BPlusTreePage *page_node;
+    // Page *page;
+    // BPlusTreePage *page_node;
 
-    //page = buffer_pool_manager_->FetchPage(root_page_id_);
-    //page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
-    //ToString(page_node, buffer_pool_manager_);
+    // page = buffer_pool_manager_->FetchPage(root_page_id_);
+    // page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+    // ToString(page_node, buffer_pool_manager_);
   }
 
   return ok;
@@ -637,7 +635,7 @@ Page *BPLUSTREE_TYPE::new_root(bool new_tree) {
 
   mu_.lock();
 
-  root_page_id_ = page_id; // mark this as root page id
+  root_page_id_ = page_id;  // mark this as root page id
 
   // insert header page (meta data)
   UpdateRootPageId(new_tree);  // true for start a new tree

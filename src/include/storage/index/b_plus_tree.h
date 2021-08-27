@@ -10,10 +10,10 @@
 //===----------------------------------------------------------------------===//
 #pragma once
 
+#include <mutex>  // NOLINT
 #include <queue>
 #include <string>
 #include <vector>
-#include <mutex>               // NOLINT
 
 #include "concurrency/transaction.h"
 #include "storage/index/index_iterator.h"
@@ -24,7 +24,7 @@ namespace bustub {
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
 
-enum class OpType { READ = 0, INSERT, DELETE};
+enum class OpType { READ = 0, INSERT, DELETE };
 
 /**
  * Main class providing the API for the Interactive B+ Tree.
@@ -80,9 +80,9 @@ class BPlusTree {
   // read data from file and remove one by one
   void RemoveFromFile(const std::string &file_name, Transaction *transaction = nullptr);
   // expose for test purpose
-  //Page *FindLeafPage(const KeyType &key, bool leftMost = false);
+  // Page *FindLeafPage(const KeyType &key, bool leftMost = false);
   Page *FindLeafPage(const KeyType &key, bool leftMost = false, OpType op = OpType::READ,
-                   Transaction *transaction = nullptr);
+                     Transaction *transaction = nullptr);
 
  private:
   // self
@@ -127,7 +127,7 @@ class BPlusTree {
   int leaf_max_size_;
   int internal_max_size_;
 
-  std::mutex mu_; // only protect root_index update
+  std::mutex mu_;  // only protect root_index update
 };
 
 }  // namespace bustub
