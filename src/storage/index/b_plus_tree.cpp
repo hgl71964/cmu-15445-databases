@@ -149,7 +149,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   // ask for new root page
   auto *root_page = new_rootL(true);
 
-  root_page->WLatch();
+  // root_page->WLatch();
 
   // init new tree (as leaf)
   auto *root_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(root_page->GetData());
@@ -159,7 +159,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   root_node->Insert(key, value, comparator_);
 
   // done using; mark dirty
-  root_page->WUnlatch();
+  // root_page->WUnlatch();
   buffer_pool_manager_->UnpinPage(root_node->GetPageId(), true);
   mu_.unlock();
 }
@@ -172,6 +172,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
  * @return: since we only support unique key, if user try to insert duplicate
  * keys return false, otherwise return true.
  */
+/*NOTE: for insert, if node is modified, its ancestor also got modified*/
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction) {
   // fetch - page hold WRITE latch
@@ -186,7 +187,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   ValueType val;
   bool exist = leaf_page_node->Lookup(key, &val, comparator_);
   if (exist) {
-    release_N_unPin(page, transaction, false);
+    release_N_unPin(page, transaction, false);  // page, ancestor not dirty
     return false;
   }
 
@@ -207,7 +208,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   }
 
   // done using; mark dirty;
-  release_N_unPin(page, transaction, true);
+  release_N_unPin(page, transaction, true);  // page, ancestor dirty
   return true;
 }
 
@@ -336,6 +337,11 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   int remain_size = leaf_page_node->RemoveAndDeleteRecord(key, comparator_);
   bool has_modify = (original_size != remain_size);
 
+  if (!has_modify) {
+    release_N_unPin(page, transaction, false);  // page, ancestor not dirty
+    return;
+  }
+
   // redist or merge
   bool should_delete = false;
   if (remain_size < leaf_page_node->GetMinSize()) {
@@ -343,7 +349,6 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   }
 
   // close leaf_page_node - FIXME free ancestor and release
-  // release_N_unPin(Page *page, Transaction *transaction, bool dirty);
   buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), has_modify);
   if (should_delete) {
     buffer_pool_manager_->DeletePage(leaf_page_node->GetPageId());
@@ -368,12 +373,13 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     return AdjustRoot(node);
   }
 
-  // get parent
+  // get parent - and we must have its latch
   auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
   auto *parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
   cur_index = parent_node->ValueIndex(node->GetPageId());
 
   // get sibling - if node is leftmost, get right sibling - otherwise get left sibling
+  // because we have parent latch - this sibling is unique - we do not need to hold its latch
   if (cur_index == 0) {
     auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(1));  // get right sibling
     sibling_node = reinterpret_cast<N *>(tmp->GetData());
@@ -548,25 +554,25 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
     return false;
   }
 
-  // case 1 - root has only one child - switch root node 
-  mu_.lock();
+  // case 1 - root has only one child - switch root node
   auto *tmp = reinterpret_cast<InternalPage *>(old_root_node);
   page_id_t val = tmp->RemoveAndReturnOnlyChild();
 
   // switch root to its only child
   auto *page = buffer_pool_manager_->FetchPage(val);
-  auto *new_root_node = reinterpret_cast<InternalPage *>(page->GetData());
 
   // this latch mustn't acquired yet
-  page->WLatch();
+  // page->WLatch();
 
-  root_page_id_ = new_root_node->GetPageId();
-  UpdateRootPageId(false);  // true for start a new tree
+  // switch
+  mu_.lock();
+  root_page_id_ = page->GetPageId();
+  UpdateRootPageId(false);
+  mu_.unlock();
 
   // mark dirty
-  page->WUnlatch();
-  buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
-  mu_.unlock();
+  // page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
 
   return true;
 }
@@ -639,7 +645,7 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(INVALID_PAG
  *****************************************************************************/
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::release_N_unPin(Page *page, Transaction *transaction, bool dirty) {
-  free_ancestor(transaction);
+  free_ancestor(transaction, dirty);  // ancestor must be dirty, otherwise it won't be in transaction
   page->WUnlatch();
   buffer_pool_manager_->UnpinPage(page->GetPageId(), dirty);
 }
@@ -746,7 +752,7 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
 
     // check
     if (isSafe(op, childPage)) {
-      free_ancestor(transaction);
+      free_ancestor(transaction, false);
     }
   }
   return page;
@@ -758,21 +764,21 @@ bool BPLUSTREE_TYPE::isSafe(WType op, Page *childPage) {
   if (op == WType::INSERT && node->GetSize() < node->GetMaxSize() - 1) {
     return true;
   }
-  if (op == WType::DELETE && node->GetSize() > node->GetMinSize() + 1) {
+  if (op == WType::DELETE && node->GetSize() > node->GetMinSize()) {  // or node->GetMinSize() + 1
     return true;
   }
   return false;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction) {
+void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty) {
   // this is a pointer
   std::shared_ptr<std::deque<Page *>> page_set = transaction->GetPageSet();
 
   while (!page_set->empty()) {
     Page *p = page_set->front();
     p->WUnlatch();
-    buffer_pool_manager_->UnpinPage(p->GetPageId(), false);
+    buffer_pool_manager_->UnpinPage(p->GetPageId(), ancestor_dirty);
 
     // notice this clears elem in transaction - because page_set is a pointer
     page_set->pop_front();
