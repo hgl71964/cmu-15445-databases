@@ -266,7 +266,6 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   if (old_node->IsRootPage()) {
     mu_.lock();
     auto *root_page = new_rootL(false);
-    mu_.unlock();
 
     // init new root (as internal)
     auto *root_node = reinterpret_cast<InternalPage *>(root_page->GetData());
@@ -279,6 +278,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
 
     // done using; dirty
     buffer_pool_manager_->UnpinPage(root_node->GetPageId(), true);
+    mu_.unlock();
     return;
   }
 
@@ -548,7 +548,8 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
     return false;
   }
 
-  // case 1 - root has only one child
+  // case 1 - root has only one child - switch root node 
+  mu_.lock();
   auto *tmp = reinterpret_cast<InternalPage *>(old_root_node);
   page_id_t val = tmp->RemoveAndReturnOnlyChild();
 
@@ -557,7 +558,6 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   auto *new_root_node = reinterpret_cast<InternalPage *>(page->GetData());
 
   // this latch mustn't acquired yet
-  mu_.lock();
   page->WLatch();
 
   root_page_id_ = new_root_node->GetPageId();
