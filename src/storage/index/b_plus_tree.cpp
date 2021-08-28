@@ -116,6 +116,11 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   }
   mu_.unlock();
 
+  if (!transaction->GetPageSet()->empty()) {
+    LOG_DEBUG("fatal - page set");
+    transaction->GetPageSet()->clear();
+  }
+
   // if (b_debug_msg){
   //  LOG_DEBUG("key: %ld - val_slot: %d ", key.ToString(), value.GetSlotNum());
   //}
@@ -324,6 +329,14 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     return;
   }
   mu_.unlock();
+  if (!transaction->GetPageSet()->empty()) {
+    LOG_DEBUG("remove - page set");
+    transaction->GetPageSet()->clear();
+  }
+  if (!transaction->GetDeletedPageSet()->empty()) {
+    LOG_DEBUG("remove - delete page set");
+    transaction->GetDeletedPageSet()->clear();
+  }
 
   // fetch - page hold WRITE latch
   auto *page = WRITE_FindLeafPage(key, false, WType::DELETE, transaction);
