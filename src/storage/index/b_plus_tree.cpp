@@ -186,10 +186,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   ValueType val;
   bool exist = leaf_page_node->Lookup(key, &val, comparator_);
   if (exist) {
-    // try to insert deplicate key
-    free_ancestor(transaction);
-    page->WUnlatch();
-    buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+    release_N_unPin(page, transaction, false);
     return false;
   }
 
@@ -209,10 +206,8 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
     buffer_pool_manager_->UnpinPage(new_leaf_page_node->GetPageId(), true);
   }
 
-  // done using; mark dirty; FIXME
-  free_ancestor(transaction);
-  page->WUnlatch();
-  buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
+  // done using; mark dirty;
+  release_N_unPin(page, transaction, true);
   return true;
 }
 
@@ -637,6 +632,12 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(INVALID_PAG
 /*****************************************************************************
  * UTILITIES AND DEBUG
  *****************************************************************************/
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::release_N_unPin(Page *page, Transaction *transaction, bool dirty) {
+  free_ancestor(transaction);
+  page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(page->GetPageId(), dirty);
+}
 
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::new_rootL(bool new_tree) {

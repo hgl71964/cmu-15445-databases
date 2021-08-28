@@ -87,6 +87,7 @@ class BPlusTree {
   Page *new_rootL(bool new_tree);
   bool isSafe(WType op, Page *childPage);
   void free_ancestor(Transaction *transaction);
+  void release_N_unPin(Page *page, Transaction *transaction, bool dirty);
   // self
 
   void StartNewTree(const KeyType &key, const ValueType &value);
