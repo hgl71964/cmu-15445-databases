@@ -420,7 +420,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
 
     // del
-    if (parent_should_del) { // need to del parent page here
+    if (parent_should_del) {  // need to del parent page here
       transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
       parent_page->WUnlatch();
       buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);  // because in WRITE_FindLeafPage it is also pin
