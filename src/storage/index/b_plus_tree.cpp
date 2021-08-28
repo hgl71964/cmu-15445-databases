@@ -349,8 +349,10 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     should_delete = CoalesceOrRedistribute(leaf_page_node, transaction);
   }
 
-  // close leaf_page_node - FIXME free ancestor and release
-  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), has_modify);
+  // release close leaf_page_node - FIXME what about ancestors??
+  // page->WUnlatch();
+  // buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
+  release_N_unPin(page, transaction, true);  // page, ancestor dirty - those have been del will be addressed
   if (should_delete) {
     buffer_pool_manager_->DeletePage(leaf_page_node->GetPageId());
   }
@@ -363,6 +365,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
  * @return: true means target leaf page should be deleted, false means no
  * deletion happens
  */
+/*when this is called, node and its parent has latch*/
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
@@ -380,7 +383,8 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   cur_index = parent_node->ValueIndex(node->GetPageId());
 
   // get sibling - if node is leftmost, get right sibling - otherwise get left sibling
-  // because we have parent latch - this sibling is unique - we do not need to hold its latch
+  // parent has latch - so sibling is safe (no horizontal scanning)
+  // we do not need to hold its latch
   if (cur_index == 0) {
     auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(1));  // get right sibling
     sibling_node = reinterpret_cast<N *>(tmp->GetData());
@@ -416,10 +420,13 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
 
     // del
-    if (parent_should_del) {
+    if (parent_should_del) { // need to del parent page here
+      transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
+      parent_page->WUnlatch();
+      buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);  // because in WRITE_FindLeafPage it is also pin
       buffer_pool_manager_->DeletePage(parent_node->GetPageId());
     }
-    if (cur_index == 0) {  // sibling need to be deleted - else our caller will handle
+    if (cur_index == 0) {  // sibling need to be deleted - else our caller will handle - and has no latch
       buffer_pool_manager_->DeletePage(sibling_node->GetPageId());
     }
   }
@@ -778,8 +785,12 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
   while (!page_set->empty()) {
     Page *p = page_set->front();
-    p->WUnlatch();
-    buffer_pool_manager_->UnpinPage(p->GetPageId(), ancestor_dirty);
+
+    // if in delete set, then it is deleted already
+    if (transaction->GetDeletedPageSet()->find(p->GetPageId()) != transaction->GetDeletedPageSet()->end()) {
+      p->WUnlatch();
+      buffer_pool_manager_->UnpinPage(p->GetPageId(), ancestor_dirty);
+    }
 
     // notice this clears elem in transaction - because page_set is a pointer
     page_set->pop_front();
