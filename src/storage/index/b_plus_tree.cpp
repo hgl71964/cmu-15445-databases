@@ -187,14 +187,16 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   bool exist = leaf_page_node->Lookup(key, &val, comparator_);
   if (exist) {
     // try to insert deplicate key
-    buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
+    free_ancestor(transaction);
+    page->WUnlatch();
+    buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
     return false;
   }
 
   // insert
   auto new_size = leaf_page_node->Insert(key, value, comparator_);
 
-  // if full, split leaf node
+  // if full, split leaf node - now parent latch must been held
   if (new_size >= leaf_page_node->GetMaxSize()) {
     B_PLUS_TREE_LEAF_PAGE_TYPE *new_leaf_page_node = split_leaf(leaf_page_node);
 
@@ -207,17 +209,15 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
     buffer_pool_manager_->UnpinPage(new_leaf_page_node->GetPageId(), true);
   }
 
-  // done using; mark dirty
-  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
+  // done using; mark dirty; FIXME
+  free_ancestor(transaction);
+  page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
   return true;
 }
 
 /*
- * Split input page and return newly created page.
- * Using template N to represent either internal page or leaf page.
- * User needs to first ask for new page from buffer pool manager(NOTICE: throw
- * an "out of memory" exception if returned value is nullptr), then move half
- * of key & value pairs from input page to newly created page
+// no need to hold latch here
  */
 INDEX_TEMPLATE_ARGUMENTS
 B_PLUS_TREE_LEAF_PAGE_TYPE *BPLUSTREE_TYPE::split_leaf(B_PLUS_TREE_LEAF_PAGE_TYPE *node) {
@@ -277,7 +277,9 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
                                       Transaction *transaction) {
   // root - terminate recursion
   if (old_node->IsRootPage()) {
+    mu_.lock();
     auto *root_page = new_rootL(false);
+    mu_.unlock();
 
     // init new root (as internal)
     auto *root_node =
@@ -296,7 +298,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
 
   // else fetch parent page
   auto parent_id = old_node->GetParentPageId();
-  auto *page = buffer_pool_manager_->FetchPage(parent_id);
+  auto *page = buffer_pool_manager_->FetchPage(parent_id);  // latch is hold
   auto *parent_page_node =
       reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page->GetData());
 

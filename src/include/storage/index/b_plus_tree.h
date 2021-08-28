@@ -84,7 +84,7 @@ class BPlusTree {
 
  private:
   // self
-  Page *new_root(bool new_tree);
+  Page *new_rootL(bool new_tree);
   B_PLUS_TREE_LEAF_PAGE_TYPE *split_leaf(B_PLUS_TREE_LEAF_PAGE_TYPE *node);
   bool isSafe(WType op, Page *childPage);
   void free_ancestor(Transaction *transaction);
