@@ -269,8 +269,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
     mu_.unlock();
 
     // init new root (as internal)
-    auto *root_node =
-        reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(root_page->GetData());
+    auto *root_node = reinterpret_cast<InternalPage *>(root_page->GetData());
     root_node->Init(root_page_id_, INVALID_PAGE_ID, internal_max_size_);
 
     // adopt
@@ -286,8 +285,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   // else fetch parent page
   auto parent_id = old_node->GetParentPageId();
   auto *page = buffer_pool_manager_->FetchPage(parent_id);  // latch is hold
-  auto *parent_page_node =
-      reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page->GetData());
+  auto *parent_page_node = reinterpret_cast<InternalPage *>(page->GetData());
 
   // insert into parent, adopt
   auto new_size = parent_page_node->InsertNodeAfter(old_node->GetPageId(), key, new_node->GetPageId());
@@ -371,8 +369,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
   // get parent
   auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
-  auto *parent_node =
-      reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(parent_page->GetData());
+  auto *parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
   cur_index = parent_node->ValueIndex(node->GetPageId());
 
   // get sibling - if node is leftmost, get right sibling - otherwise get left sibling
@@ -456,8 +453,8 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
   } else {
     // resolve internal page type
     //
-    auto *tmp_n = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(*neighbor_node);
-    auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(*node);
+    auto *tmp_n = reinterpret_cast<InternalPage *>(*neighbor_node);
+    auto *tmp = reinterpret_cast<InternalPage *>(*node);
 
     // merge
     if (index == 0) {
@@ -492,8 +489,7 @@ template <typename N>
 void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
   // get parent
   auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
-  auto *parent_node =
-      reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(parent_page->GetData());
+  auto *parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
 
   bool isLeaf = node->IsLeafPage();
   if (isLeaf) {
@@ -512,8 +508,8 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
   } else {
     // resolve internal page type
     //
-    auto *tmp_n = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(neighbor_node);
-    auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(node);
+    auto *tmp_n = reinterpret_cast<InternalPage *>(neighbor_node);
+    auto *tmp = reinterpret_cast<InternalPage *>(node);
 
     if (index == 0) {
       auto middle_key = parent_node->KeyAt(1);
@@ -551,12 +547,12 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   }
 
   // case 1 - root has only one child
-  auto *tmp = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(old_root_node);
+  auto *tmp = reinterpret_cast<InternalPage *>(old_root_node);
   page_id_t val = tmp->RemoveAndReturnOnlyChild();
 
   // switch root to its only child
   auto *page = buffer_pool_manager_->FetchPage(val);
-  auto *new_root_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page->GetData());
+  auto *new_root_node = reinterpret_cast<InternalPage *>(page->GetData());
 
   mu_.lock();
   root_page_id_ = new_root_node->GetPageId();
@@ -682,7 +678,7 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
   // if root ok, then recursively search
   while (!page_node->IsLeafPage()) {
     // data key must exist in internal node
-    auto *internal_page_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page_node);
+    auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
 
     val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
 
@@ -724,7 +720,7 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
 
   // if root ok, traverse down
   while (!page_node->IsLeafPage()) {
-    auto *internal_page_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page_node);
+    auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
 
     val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
 
@@ -804,7 +800,7 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   // if root ok, then recursively search
   while (!page_node->IsLeafPage()) {
     // data key must exist in internal node
-    auto *internal_page_node = reinterpret_cast<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *>(page_node);
+    auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
 
     val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
 
