@@ -109,10 +109,12 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) {
   // 1. if empty start new tree
+  mu_.lock();
   if (IsEmpty()) {
-    StartNewTree(key, value);
+    StartNewTree(key, value);  // will release mu_
     return true;
   }
+  mu_.unlock();
 
   // if (b_debug_msg){
   //  LOG_DEBUG("key: %ld - val_slot: %d ", key.ToString(), value.GetSlotNum());
@@ -139,11 +141,16 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
  * User needs to first ask for new page from buffer pool manager(NOTICE: throw
  * an "out of memory" exception if returned value is nullptr), then update b+
  * tree's root page id and insert entry directly into leaf page.
+
+ * caller MUST hold mu_ - will be released here
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   // ask for new root page
-  auto *root_page = new_root(true);
+  auto *root_page = new_rootL(true);
+
+  mu_.unlock();
+  root_page->WLatch();
 
   // init new tree (as leaf)
   auto *root_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(root_page->GetData());
@@ -153,6 +160,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   root_node->Insert(key, value, comparator_);
 
   // done using; mark dirty
+  root_page->WUnlatch();
   buffer_pool_manager_->UnpinPage(root_node->GetPageId(), true);
 }
 
@@ -270,7 +278,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
                                       Transaction *transaction) {
   // root - terminate recursion
   if (old_node->IsRootPage()) {
-    auto *root_page = new_root(false);
+    auto *root_page = new_rootL(false);
 
     // init new root (as internal)
     auto *root_node =
@@ -322,9 +330,13 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
+  mu_.lock();
   if (IsEmpty()) {
+    mu_.unlock();
     return;
   }
+  mu_.unlock();
+
   // fetch - page hold WRITE latch
   auto *page = WRITE_FindLeafPage(key, false, WType::DELETE, transaction);
   if (page == nullptr) {
@@ -634,7 +646,7 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(INVALID_PAG
  *****************************************************************************/
 
 INDEX_TEMPLATE_ARGUMENTS
-Page *BPLUSTREE_TYPE::new_root(bool new_tree) {
+Page *BPLUSTREE_TYPE::new_rootL(bool new_tree) {
   page_id_t page_id;
   auto *page = buffer_pool_manager_->NewPage(&page_id);
 
@@ -643,14 +655,10 @@ Page *BPLUSTREE_TYPE::new_root(bool new_tree) {
     throw Exception(ExceptionType::OUT_OF_MEMORY, "start new tree out of mem");
   }
 
-  mu_.lock();
-
   root_page_id_ = page_id;  // mark this as root page id
 
   // insert header page (meta data)
   UpdateRootPageId(new_tree);  // true for start a new tree
-
-  mu_.unlock();
 
   return page;
 }
@@ -699,6 +707,8 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
   return page;
 }
 
+// @return: leaf with write latch
+// if parents are not safe, they exist in transaction
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WType op, Transaction *transaction) {
   mu_.lock();
@@ -745,14 +755,17 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
 
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::isSafe(WType op, Page *childPage) {
-  // auto *node = reinterpret_cast<BPlusTreePage *>(childPage->GetData());
-  // if (op == WType::INSERT) {
-  //  // TODO
-  //} else {
-  //}
+  auto *node = reinterpret_cast<BPlusTreePage *>(childPage->GetData());
+  if (op == WType::INSERT && node->GetSize() < node->GetMaxSize()-1) {
+      return true;
+  } 
+  if (op == WType::DELETE && node->GetSize() > node->GetMinSize() + 1) {
+    return true;
+  }
 
-  return true;
+  return false;
 }
+
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction) {
