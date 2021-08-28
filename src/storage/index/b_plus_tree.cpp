@@ -198,7 +198,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 
   // if full, split leaf node - now parent latch must been held
   if (new_size >= leaf_page_node->GetMaxSize()) {
-    B_PLUS_TREE_LEAF_PAGE_TYPE *new_leaf_page_node = split_leaf(leaf_page_node);
+    B_PLUS_TREE_LEAF_PAGE_TYPE *new_leaf_page_node = Split(leaf_page_node);
 
     auto partition_key = new_leaf_page_node->KeyAt(0);  // partition key
 
@@ -217,30 +217,10 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 }
 
 /*
-// no need to hold latch here
- */
-INDEX_TEMPLATE_ARGUMENTS
-B_PLUS_TREE_LEAF_PAGE_TYPE *BPLUSTREE_TYPE::split_leaf(B_PLUS_TREE_LEAF_PAGE_TYPE *node) {
-  // new page
-  page_id_t page_id;
-  auto *page = buffer_pool_manager_->NewPage(&page_id);
-  if (page == nullptr) {
-    LOG_DEBUG("Split leave out of mem");
-    throw Exception(ExceptionType::OUT_OF_MEMORY, "Split out of mem");
-  }
-
-  // init new nodes
-  auto *new_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
-  new_page_node->Init(page_id, node->GetParentPageId(), node->GetMaxSize());
-
-  // move key & val pairs
-  node->MoveHalfTo(new_page_node);
-  node->SetNextPageId(new_page_node->GetPageId());
-
-  // new page wull be used by caller, dont Unpin
-  return new_page_node;
-}
-
+// no need to hold latch for newly split page here
+// because it is the right sibling,
+// once instantiate, its left silbing and parent must have latch
+*/
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 N *BPLUSTREE_TYPE::Split(N *node) {
@@ -256,8 +236,20 @@ N *BPLUSTREE_TYPE::Split(N *node) {
   N *new_page_node = reinterpret_cast<N *>(page->GetData());
   new_page_node->Init(page_id, node->GetParentPageId(), node->GetMaxSize());
 
-  // move key & val pairs
-  node->MoveHalfTo(new_page_node, buffer_pool_manager_);
+  if (node->IsLeafPage()) {
+    auto *tmp_n = reinterpret_cast<LeafPage *>(new_page_node);
+    auto *tmp = reinterpret_cast<LeafPage *>(node);
+
+    // move key & val pairs
+    tmp->MoveHalfTo(tmp_n);
+    tmp->SetNextPageId(tmp_n->GetPageId());
+  } else {
+    auto *tmp_n = reinterpret_cast<InternalPage *>(new_page_node);
+    auto *tmp = reinterpret_cast<InternalPage *>(node);
+
+    // move key & val pairs
+    tmp->MoveHalfTo(tmp_n, buffer_pool_manager_);
+  }
 
   // new page wull be used by caller, dont Unpin
   return new_page_node;
