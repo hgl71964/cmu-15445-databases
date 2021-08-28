@@ -172,7 +172,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
  * @return: since we only support unique key, if user try to insert duplicate
  * keys return false, otherwise return true.
  */
-/*NOTE: for insert, if node is modified, its ancestor also got modified*/
+/*NOTE: for insert, if a node is modified, its ancestor also got modified if the ancestor in transaction*/
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction) {
   // fetch - page hold WRITE latch
@@ -215,8 +215,8 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 /*
 // no need to hold latch for newly split page here
 // because it is the right sibling,
-// once instantiate, its left silbing and parent must have latch
 */
+/*WHen this is called, its left and parent have latch, so it is safe not to hold latch*/
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 N *BPLUSTREE_TYPE::Split(N *node) {
@@ -260,6 +260,7 @@ N *BPLUSTREE_TYPE::Split(N *node) {
  * adjusted to take info of new_node into account. Remember to deal with split
  * recursively if necessary.
  */
+/*NOTE: when this is called, parent must hold latch*/
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &key, BPlusTreePage *new_node,
                                       Transaction *transaction) {
@@ -338,7 +339,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   bool has_modify = (original_size != remain_size);
 
   if (!has_modify) {
-    release_N_unPin(page, transaction, false);  // page, ancestor not dirty
+    release_N_unPin(page, transaction, false);  // page, ancestor not dirty - release and free
     return;
   }
 
