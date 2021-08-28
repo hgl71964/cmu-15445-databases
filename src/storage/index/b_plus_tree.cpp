@@ -787,7 +787,7 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
     Page *p = page_set->front();
 
     // if in delete set, then it is deleted already
-    if (transaction->GetDeletedPageSet()->find(p->GetPageId()) != transaction->GetDeletedPageSet()->end()) {
+    if (transaction->GetDeletedPageSet()->find(p->GetPageId()) == transaction->GetDeletedPageSet()->end()) {
       p->WUnlatch();
       buffer_pool_manager_->UnpinPage(p->GetPageId(), ancestor_dirty);
     }
