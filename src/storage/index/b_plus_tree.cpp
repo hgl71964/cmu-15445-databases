@@ -149,7 +149,6 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   // ask for new root page
   auto *root_page = new_rootL(true);
 
-  mu_.unlock();
   root_page->WLatch();
 
   // init new tree (as leaf)
@@ -162,6 +161,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   // done using; mark dirty
   root_page->WUnlatch();
   buffer_pool_manager_->UnpinPage(root_node->GetPageId(), true);
+  mu_.unlock();
 }
 
 /*
@@ -342,7 +342,8 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     should_delete = CoalesceOrRedistribute(leaf_page_node, transaction);
   }
 
-  // close leaf_page_node
+  // close leaf_page_node - FIXME free ancestor and release
+  // release_N_unPin(Page *page, Transaction *transaction, bool dirty);
   buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), has_modify);
   if (should_delete) {
     buffer_pool_manager_->DeletePage(leaf_page_node->GetPageId());
@@ -533,6 +534,7 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
  * case 2: when you delete the last element in whole b+ tree
  * @return : true means root page should be deleted, false means no deletion
  * happend
+ * NOTE: caller must have hold write latch on this node
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
@@ -554,16 +556,23 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   auto *page = buffer_pool_manager_->FetchPage(val);
   auto *new_root_node = reinterpret_cast<InternalPage *>(page->GetData());
 
+  // this latch mustn't acquired yet
   mu_.lock();
+  page->WLatch();
+
   root_page_id_ = new_root_node->GetPageId();
   UpdateRootPageId(false);  // true for start a new tree
+
+  // mark dirty
+  page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
   mu_.unlock();
 
   return true;
 }
 
 /*****************************************************************************
- * INDEX ITERATOR - TODO may need to change completely for concurrent access
+ * INDEX ITERATOR - FIXME may need to change completely for concurrent access
  *****************************************************************************/
 /*
  * Input parameter is void, find the leaftmost leaf page first, then construct
