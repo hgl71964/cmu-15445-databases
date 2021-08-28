@@ -35,6 +35,12 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
   if (b_debug_msg) {
     LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
   }
+
+  // get virtual page num
+  auto *page = buffer_pool_manager_->NewPage(&virtual_root_id_);
+  auto *root_node = reinterpret_cast<InternalPage *>(page->GetData());
+  root_node->Init(virtual_root_id_, INVALID_PAGE_ID, 0);
+  buffer_pool_manager_->UnpinPage(virtual_root_id_, true);
 }
 
 /*
@@ -703,28 +709,34 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
   BPlusTreePage *page_node;
   page_id_t val;
 
-  // root - and latch
-  page = buffer_pool_manager_->FetchPage(root_page_id_);
+  // virtual root 
+  page = buffer_pool_manager_->FetchPage(virtual_root_id_);
+  page->WLatch();
   mu_.unlock();
-
-  page->RLatch();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
   // if  root and leaf - new tree - return directly
   // if root ok, then recursively search
-  while (!page_node->IsLeafPage()) {
-    // data key must exist in internal node
-    auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
-
-    val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
+  while (!page_node->IsLeafPage() || page->GetPageId() == virtual_root_id_) {
+    if (page->GetPageId() == virtual_root_id_) {
+      val = root_page_id_;
+    } else {
+      auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
+      val = (leftMost) ? 
+        internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
+    }
 
     // get child
     childPage = buffer_pool_manager_->FetchPage(val);
     childPage->RLatch();
 
     // unpin current page and find next
-    page->RUnlatch();
-    buffer_pool_manager_->UnpinPage(page_node->GetPageId(), false);
+    if (page->GetPageId() == virtual_root_id_) {
+      page->WUnlatch();
+    } else {
+      page->RUnlatch();
+    }
+    buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
 
     // swap
     page = childPage;
@@ -748,17 +760,23 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
   BPlusTreePage *page_node;
   page_id_t val;
 
-  // root - if root is leaf, hold write latch and return
-  page = buffer_pool_manager_->FetchPage(root_page_id_);
-  mu_.unlock();
+  // get virtual root - must get virtual root while with mu
+  // if update can potentially affect root 
+  // virtual root's wlatch is held
+  page = buffer_pool_manager_->FetchPage(virtual_root_id_);
   page->WLatch();
+  mu_.unlock();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
-  // if root ok, traverse down
-  while (!page_node->IsLeafPage()) {
-    auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
-
-    val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
+  // traverse
+  while (!page_node->IsLeafPage() || page->GetPageId() == virtual_root_id_) {
+    if (page->GetPageId() == virtual_root_id_) {
+      val = root_page_id_;
+    } else {
+      auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
+      val = (leftMost) ? 
+        internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
+    }
 
     // get child
     childPage = buffer_pool_manager_->FetchPage(val);

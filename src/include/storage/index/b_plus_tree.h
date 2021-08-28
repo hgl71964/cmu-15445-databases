@@ -128,6 +128,7 @@ class BPlusTree {
   int internal_max_size_;
 
   std::mutex mu_;  // only protect root_index update
+  page_id_t virtual_root_id_;
 };
 
 }  // namespace bustub
