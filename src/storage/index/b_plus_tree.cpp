@@ -174,7 +174,6 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction) {
-
   // fetch - page hold WRITE latch
   auto *page = WRITE_FindLeafPage(key, false, WType::INSERT, transaction);
   if (page == nullptr) {
@@ -756,16 +755,14 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::isSafe(WType op, Page *childPage) {
   auto *node = reinterpret_cast<BPlusTreePage *>(childPage->GetData());
-  if (op == WType::INSERT && node->GetSize() < node->GetMaxSize()-1) {
-      return true;
-  } 
+  if (op == WType::INSERT && node->GetSize() < node->GetMaxSize() - 1) {
+    return true;
+  }
   if (op == WType::DELETE && node->GetSize() > node->GetMinSize() + 1) {
     return true;
   }
-
   return false;
 }
-
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction) {
