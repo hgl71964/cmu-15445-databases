@@ -544,14 +544,8 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
 
   // switch root to its only child
   auto *page = buffer_pool_manager_->FetchPage(val);
-  auto *tmp_tmp = reinterpret_cast<BPlusTreePage *>(page->GetData());
-  if (tmp_tmp->IsLeafPage()) {
-    auto *tmp = reinterpret_cast<LeafPage *>(page->GetData());
-    tmp->SetParentPageId(INVALID_PAGE_ID);
-  } else {
-    auto *tmp = reinterpret_cast<InternalPage *>(page->GetData());
-    tmp->SetParentPageId(INVALID_PAGE_ID);
-  }
+  auto *tmp = reinterpret_cast<BPlusTreePage *>(page->GetData());
+  tmp->SetParentPageId(INVALID_PAGE_ID);
 
   // switch
   root_page_id_ = page->GetPageId();
