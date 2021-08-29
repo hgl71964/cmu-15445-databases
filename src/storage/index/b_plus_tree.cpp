@@ -629,11 +629,11 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(INVALID_PAG
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::check_txns(Transaction *transaction) {
   if (!transaction->GetPageSet()->empty()) {
-    LOG_DEBUG("transaction page set");
+    LOG_DEBUG("fatal - transaction page set");
     // transaction->GetPageSet()->clear();
   }
   if (!transaction->GetDeletedPageSet()->empty()) {
-    LOG_DEBUG("transaction delete page set");
+    LOG_DEBUG("fatal - transaction delete page set");
     // transaction->GetDeletedPageSet()->clear();
   }
 }
@@ -807,6 +807,8 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
   // this is a pointer
   std::shared_ptr<std::deque<Page *>> page_set = transaction->GetPageSet();
 
+  // LOG_DEBUG("enter free_ancestor: %ld", transaction->GetPageSet()->size());
+
   while (!page_set->empty()) {
     Page *p = page_set->front();
 
@@ -818,6 +820,15 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
     // notice this clears elem in transaction - because page_set is a pointer
     page_set->pop_front();
+  }
+
+  if (!page_set->empty() || !transaction->GetPageSet()->empty()) {
+    LOG_DEBUG("fatal - free_ancestor - page_set");
+    transaction->GetPageSet()->clear();
+  }
+  if (!transaction->GetDeletedPageSet()->empty()) {
+    LOG_DEBUG("fatal - free_ancestor - del page_set");
+    transaction->GetDeletedPageSet()->clear();
   }
   // transaction->GetPageSet()->clear();
 }
