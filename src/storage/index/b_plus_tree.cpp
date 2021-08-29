@@ -20,7 +20,7 @@
 namespace bustub {
 
 namespace {
-const bool b_debug_msg = true;
+const bool b_debug_msg = false;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -306,18 +306,14 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
-  lock();
-  if (IsEmpty()) {
-    unlock();
-    return;
-  }
-  unlock();
   check_txns(transaction);
 
   // fetch - page hold WRITE latch
   auto *page = WRITE_FindLeafPage(key, false, WType::DELETE, transaction);
   if (page == nullptr) {
-    throw Exception(ExceptionType::INVALID, "remove");
+    //throw Exception(ExceptionType::INVALID, "remove");
+    // isEmpty
+    return;
   }
   auto *leaf_page_node = reinterpret_cast<LeafPage *>(page->GetData());
 
