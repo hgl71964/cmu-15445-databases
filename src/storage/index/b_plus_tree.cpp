@@ -311,7 +311,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   // fetch - page hold WRITE latch
   auto *page = WRITE_FindLeafPage(key, false, WType::DELETE, transaction);
   if (page == nullptr) {
-    //throw Exception(ExceptionType::INVALID, "remove");
+    // throw Exception(ExceptionType::INVALID, "remove");
     // isEmpty
     return;
   }
