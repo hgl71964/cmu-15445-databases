@@ -20,7 +20,7 @@
 namespace bustub {
 
 namespace {
-const bool b_debug_msg = false;
+const bool b_debug_msg = true;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -32,15 +32,16 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
       comparator_(comparator),
       leaf_max_size_(leaf_max_size),
       internal_max_size_(internal_max_size) {
-  if (b_debug_msg) {
-    LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
-  }
-
   // get virtual page num
   auto *page = buffer_pool_manager_->NewPage(&virtual_root_id_);
   auto *root_node = reinterpret_cast<InternalPage *>(page->GetData());
   root_node->Init(virtual_root_id_, INVALID_PAGE_ID, 0);
   buffer_pool_manager_->UnpinPage(virtual_root_id_, true);
+
+  if (b_debug_msg) {
+    LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
+    LOG_DEBUG("virtual root id: %d", virtual_root_id_);
+  }
 }
 
 /*
@@ -115,10 +116,6 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   }
   unlock();
   check_txns(transaction);
-
-  // if (b_debug_msg){
-  //  LOG_DEBUG("key: %ld - val_slot: %d ", key.ToString(), value.GetSlotNum());
-  //}
 
   // 2. insert - ok = no duplicate
   bool ok = InsertIntoLeaf(key, value, transaction);
@@ -814,6 +811,9 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
     // if in delete set, then it is deleted already
     if (transaction->GetDeletedPageSet()->find(p->GetPageId()) == transaction->GetDeletedPageSet()->end()) {
+      if (b_debug_msg) {
+        LOG_DEBUG("free page id: %d", p->GetPageId());
+      }
       p->WUnlatch();
       buffer_pool_manager_->UnpinPage(p->GetPageId(), ancestor_dirty);
     }
@@ -822,12 +822,11 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
     page_set->pop_front();
   }
 
+  // manual clear
   if (!page_set->empty() || !transaction->GetPageSet()->empty()) {
-    LOG_DEBUG("fatal - free_ancestor - page_set");
     transaction->GetPageSet()->clear();
   }
   if (!transaction->GetDeletedPageSet()->empty()) {
-    LOG_DEBUG("fatal - free_ancestor - del page_set");
     transaction->GetDeletedPageSet()->clear();
   }
   // transaction->GetPageSet()->clear();

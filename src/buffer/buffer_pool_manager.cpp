@@ -103,7 +103,7 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
 
   // does not exist
   if (page_table_.find(page_id) == page_table_.end()) {
-    LOG_ERROR("unpin");
+    LOG_ERROR("unpin page_id: %d", page_id);
     return true;
   }
   if (pages_[page_table_[page_id]].pin_count_ <= 0) {
