@@ -58,14 +58,6 @@ bool BPLUSTREE_TYPE::IsEmpty() const { return root_page_id_ == INVALID_PAGE_ID; 
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *transaction) {
-  // if (b_debug_msg) {
-  //  Page *page;
-  //  BPlusTreePage *page_node;
-
-  //  page = buffer_pool_manager_->FetchPage(root_page_id_);
-  //  page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
-  //  ToString(page_node, buffer_pool_manager_);
-  //}
   //{
   //  Page *page;
   //  BPlusTreePage *page_node;
@@ -115,12 +107,13 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) {
   // 1. if empty start new tree
-  mu_.lock();
+  lock();
   if (IsEmpty()) {
-    StartNewTree(key, value);  // will release mu_
+    StartNewTree(key, value);  // hold virtual root thoughtout
+    unlock();
     return true;
   }
-  mu_.unlock();
+  unlock();
 
   if (!transaction->GetPageSet()->empty()) {
     LOG_DEBUG("fatal - page set");
@@ -152,8 +145,6 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
  * User needs to first ask for new page from buffer pool manager(NOTICE: throw
  * an "out of memory" exception if returned value is nullptr), then update b+
  * tree's root page id and insert entry directly into leaf page.
-
- * caller MUST hold mu_ - will be released here
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
@@ -172,7 +163,6 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   // done using; mark dirty
   // root_page->WUnlatch();
   buffer_pool_manager_->UnpinPage(root_node->GetPageId(), true);
-  mu_.unlock();
 }
 
 /*
@@ -189,8 +179,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   // fetch - page hold WRITE latch
   auto *page = WRITE_FindLeafPage(key, false, WType::INSERT, transaction);
   if (page == nullptr) {
-    LOG_DEBUG("b+ tree - InsertIntoLeaf");
-    throw Exception(ExceptionType::INVALID, "b+ tree - InsertIntoLeaf");
+    throw Exception(ExceptionType::INVALID, "InsertIntoLeaf");
   }
 
   // check if duplicate
@@ -235,7 +224,6 @@ N *BPLUSTREE_TYPE::Split(N *node) {
   page_id_t page_id;
   auto *page = buffer_pool_manager_->NewPage(&page_id);
   if (page == nullptr) {
-    LOG_DEBUG("Split out of mem");
     throw Exception(ExceptionType::OUT_OF_MEMORY, "Split out of mem");
   }
 
@@ -277,7 +265,6 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
                                       Transaction *transaction) {
   // root - terminate recursion
   if (old_node->IsRootPage()) {
-    mu_.lock();
     auto *root_page = new_rootL(false);
 
     // init new root (as internal)
@@ -291,7 +278,6 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
 
     // done using; dirty
     buffer_pool_manager_->UnpinPage(root_node->GetPageId(), true);
-    mu_.unlock();
     return;
   }
 
@@ -329,12 +315,9 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
-  mu_.lock();
   if (IsEmpty()) {
-    mu_.unlock();
     return;
   }
-  mu_.unlock();
   if (!transaction->GetPageSet()->empty()) {
     LOG_DEBUG("remove - page set");
     transaction->GetPageSet()->clear();
@@ -347,7 +330,6 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   // fetch - page hold WRITE latch
   auto *page = WRITE_FindLeafPage(key, false, WType::DELETE, transaction);
   if (page == nullptr) {
-    LOG_DEBUG("b+ tree - InsertIntoLeaf");
     throw Exception(ExceptionType::INVALID, "remove");
   }
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
@@ -592,10 +574,8 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   // page->WLatch();
 
   // switch
-  mu_.lock();
   root_page_id_ = page->GetPageId();
   UpdateRootPageId(false);
-  mu_.unlock();
 
   // mark dirty
   // page->WUnlatch();
@@ -716,8 +696,7 @@ Page *BPLUSTREE_TYPE::new_rootL(bool new_tree) {
 // @return: page with read latch
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Transaction *transaction) {
-
-  // virtual root 
+  // virtual root
   Page *page;
   Page *childPage;
   BPlusTreePage *page_node;
@@ -740,8 +719,7 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
       val = root_page_id_;
     } else {
       auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
-      val = (leftMost) ? 
-        internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
+      val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
     }
 
     // get child
@@ -767,9 +745,8 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
 // if parents are not safe, they exist in transaction
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WType op, Transaction *transaction) {
-
   // get virtual root - must get virtual root while with mu
-  // if update can potentially affect root 
+  // if update can potentially affect root
   // virtual root's wlatch is held
   Page *page;
   Page *childPage;
@@ -792,8 +769,7 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
       val = root_page_id_;
     } else {
       auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
-      val = (leftMost) ? 
-        internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
+      val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
     }
 
     // get child
@@ -856,9 +832,7 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   // throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
 
   // protect root
-  mu_.lock();
   if (IsEmpty()) {
-    mu_.unlock();
     return nullptr;
   }
 
@@ -868,7 +842,6 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
 
   // root
   page = buffer_pool_manager_->FetchPage(root_page_id_);
-  mu_.unlock();
 
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
