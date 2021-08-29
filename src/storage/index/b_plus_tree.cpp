@@ -315,9 +315,13 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
+  lock();
   if (IsEmpty()) {
+    unlock();
     return;
   }
+  unlock();
+
   if (!transaction->GetPageSet()->empty()) {
     LOG_DEBUG("remove - page set");
     transaction->GetPageSet()->clear();
@@ -351,8 +355,6 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   }
 
   // release close leaf_page_node - FIXME what about ancestors??
-  // page->WUnlatch();
-  // buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
   release_N_unPin(page, transaction, true);  // page, ancestor dirty - those have been del will be addressed
   if (should_delete) {
     buffer_pool_manager_->DeletePage(leaf_page_node->GetPageId());
@@ -386,13 +388,14 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   // get sibling - if node is leftmost, get right sibling - otherwise get left sibling
   // parent has latch - so sibling is safe (no horizontal scanning)
   // we do not need to hold its latch
+  Page *sibling_page;
   if (cur_index == 0) {
-    auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(1));  // get right sibling
-    sibling_node = reinterpret_cast<N *>(tmp->GetData());
+    sibling_page = buffer_pool_manager_->FetchPage(parent_node->ValueAt(1));  // get right sibling
   } else {
-    auto *tmp = buffer_pool_manager_->FetchPage(parent_node->ValueAt(cur_index - 1));  // get left sibling
-    sibling_node = reinterpret_cast<N *>(tmp->GetData());
+    sibling_page = buffer_pool_manager_->FetchPage(parent_node->ValueAt(cur_index - 1));  // get left sibling
   }
+  sibling_page->WLatch();
+  sibling_node = reinterpret_cast<N *>(sibling_page->GetData());
 
   /**
   NOTE: now node, sibling_node, parent_node are open - but node will be closed by caller
@@ -405,6 +408,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     Redistribute(sibling_node, node, cur_index);
 
     // close
+    sibling_page->WUnlatch();
     buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
     buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
   } else {
@@ -417,6 +421,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     bool parent_should_del = Coalesce(&sibling_node, &node, &parent_node, cur_index, transaction);
 
     // close
+    sibling_page->WUnlatch();
     buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
     buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
 
@@ -549,7 +554,7 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
  * case 2: when you delete the last element in whole b+ tree
  * @return : true means root page should be deleted, false means no deletion
  * happend
- * NOTE: caller must have hold write latch on this node
+ * if this is called, virtual root is hold; so it is safe to do any change
  */
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
@@ -745,7 +750,7 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
 // if parents are not safe, they exist in transaction
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WType op, Transaction *transaction) {
-  // get virtual root - must get virtual root while with mu
+  // get virtual root
   // if update can potentially affect root
   // virtual root's wlatch is held
   Page *page;
@@ -830,6 +835,7 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   // throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
+  throw Exception(ExceptionType::INVALID, "not used");
 
   // protect root
   if (IsEmpty()) {
