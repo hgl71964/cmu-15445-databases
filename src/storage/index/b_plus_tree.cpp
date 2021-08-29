@@ -80,11 +80,10 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   bool ok = leaf_page_node->Lookup(key, &val, comparator_);
 
   if (b_debug_msg) {
-    LOG_DEBUG("key: %ld - val_slot: %d - find: %d - page_id: %d", key.ToString(), val.GetSlotNum(), ok,
+    LOG_DEBUG("GET - key: %ld - val_slot: %d - find: %d - page_id: %d", key.ToString(), val.GetSlotNum(), ok,
               leaf_page_node->GetPageId());
   }
 
-  // result.resize(1);
   if (ok) {
     result->push_back(std::move(val));
   }
@@ -121,7 +120,7 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   bool ok = InsertIntoLeaf(key, value, transaction);
 
   if (b_debug_msg) {
-    LOG_DEBUG("key: %ld - val_slot: %d - ok: %d", key.ToString(), value.GetSlotNum(), ok);
+    LOG_DEBUG("INSERT - key: %ld - val_slot: %d - ok: %d", key.ToString(), value.GetSlotNum(), ok);
   }
 
   return ok;
@@ -320,6 +319,10 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   if (!has_modify) {
     release_N_unPin(page, transaction, false);  // page, ancestor not dirty - release and free
     return;
+  }
+
+  if (b_debug_msg) {
+    LOG_DEBUG("REMOVE - key: %ld", key.ToString());
   }
 
   // redist or merge
@@ -536,22 +539,26 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   }
 
   // case 1 - root has only one child - switch root node
-  auto *tmp = reinterpret_cast<InternalPage *>(old_root_node);
-  page_id_t val = tmp->RemoveAndReturnOnlyChild();
+  auto *tmp_old = reinterpret_cast<InternalPage *>(old_root_node);
+  page_id_t val = tmp_old->RemoveAndReturnOnlyChild();
 
   // switch root to its only child
   auto *page = buffer_pool_manager_->FetchPage(val);
-
-  // this latch mustn't acquired yet
-  // page->WLatch();
+  auto *tmp_tmp = reinterpret_cast<BPlusTreePage *>(page->GetData());
+  if (tmp_tmp->IsLeafPage()) {
+    auto *tmp = reinterpret_cast<LeafPage *>(page->GetData());
+    tmp->SetParentPageId(INVALID_PAGE_ID);
+  } else {
+    auto *tmp = reinterpret_cast<InternalPage *>(page->GetData());
+    tmp->SetParentPageId(INVALID_PAGE_ID);
+  }
 
   // switch
   root_page_id_ = page->GetPageId();
   UpdateRootPageId(false);
 
   // mark dirty
-  // page->WUnlatch();
-  buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+  buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
 
   return true;
 }
