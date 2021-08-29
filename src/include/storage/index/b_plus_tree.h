@@ -85,11 +85,13 @@ class BPlusTree {
  private:
   // self
   Page *new_rootL(bool new_tree);
+  Page *get_sibling(int index, InternalPage *parent_node);
   bool isSafe(WType op, Page *childPage);
   void free_ancestor(Transaction *transaction, bool ancestor_dirty);
   void release_N_unPin(Page *page, Transaction *transaction, bool dirty);
   void lock();
   void unlock();
+  void check_txns(Transaction *transaction);
   // self
 
   void StartNewTree(const KeyType &key, const ValueType &value);
