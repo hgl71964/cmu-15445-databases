@@ -248,6 +248,11 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
                                       Transaction *transaction) {
   // root - terminate recursion
   if (old_node->IsRootPage()) {
+    // check
+    if (!is_pid_in_txns(transaction, virtual_root_id_)) {
+      LOG_DEBUG("fatal - root - InsertIntoParent");
+    }
+
     auto *root_page = new_rootL(false);
 
     // init new root (as internal)
@@ -268,6 +273,11 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   auto parent_id = old_node->GetParentPageId();
   auto *page = buffer_pool_manager_->FetchPage(parent_id);  // latch is hold
   auto *parent_page_node = reinterpret_cast<InternalPage *>(page->GetData());
+
+  // check
+  if (!is_pid_in_txns(transaction, parent_id)) {
+    LOG_DEBUG("fatal - InsertIntoParent");
+  }
 
   // insert into parent, adopt
   auto new_size = parent_page_node->InsertNodeAfter(old_node->GetPageId(), key, new_node->GetPageId());
@@ -354,6 +364,9 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
   // root - termination of recursion
   if (node->IsRootPage()) {
+    if (!is_pid_in_txns(transaction, virtual_root_id_)) {
+      LOG_DEBUG("fatal - AdjustRoot");
+    }
     return AdjustRoot(node);
   }
 
@@ -361,6 +374,11 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
   auto *parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
   cur_index = parent_node->ValueIndex(node->GetPageId());
+
+  // check
+  if (!is_pid_in_txns(transaction, parent_page->GetPageId())) {
+    LOG_DEBUG("fatal - CoalesceOrRedistribute");
+  }
 
   // get sibling - and latch
   auto *sibling_page = get_sibling(cur_index, parent_node);
@@ -623,6 +641,17 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(INVALID_PAG
 /*****************************************************************************
  * UTILITIES AND DEBUG
  *****************************************************************************/
+
+INDEX_TEMPLATE_ARGUMENTS
+bool BPLUSTREE_TYPE::is_pid_in_txns(Transaction *transaction, page_id_t pid) {
+  std::shared_ptr<std::deque<Page *>> page_set = transaction->GetPageSet();
+  for (auto &i : *page_set) {
+    if (i->GetPageId() == pid) {
+      return true;
+    }
+  }
+  return false;
+}
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::check_txns(Transaction *transaction) {

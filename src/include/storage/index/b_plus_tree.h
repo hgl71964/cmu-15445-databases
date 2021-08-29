@@ -92,6 +92,7 @@ class BPlusTree {
   void lock();
   void unlock();
   void check_txns(Transaction *transaction);
+  bool is_pid_in_txns(Transaction *transaction, page_id_t pid);
   // self
 
   void StartNewTree(const KeyType &key, const ValueType &value);
