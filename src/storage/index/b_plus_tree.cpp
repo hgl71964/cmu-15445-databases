@@ -670,6 +670,24 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(INVALID_PAG
 /*****************************************************************************
  * UTILITIES AND DEBUG
  *****************************************************************************/
+
+/* abstract method to lock and unlock virtual root */
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::lock() {
+  auto *page = buffer_pool_manager_->FetchPage(virtual_root_id_);
+  page->WLatch();
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::unlock() {
+  auto *page = buffer_pool_manager_->FetchPage(virtual_root_id_);
+  page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+
+  // close the one from lock
+  buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+}
+
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::release_N_unPin(Page *page, Transaction *transaction, bool dirty) {
   free_ancestor(transaction, dirty);  // ancestor must be dirty, otherwise it won't be in transaction
@@ -698,22 +716,22 @@ Page *BPLUSTREE_TYPE::new_rootL(bool new_tree) {
 // @return: page with read latch
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Transaction *transaction) {
-  mu_.lock();
-  if (IsEmpty()) {
-    mu_.unlock();
-    return nullptr;
-  }
 
+  // virtual root 
   Page *page;
   Page *childPage;
   BPlusTreePage *page_node;
   page_id_t val;
 
-  // virtual root 
   page = buffer_pool_manager_->FetchPage(virtual_root_id_);
   page->WLatch();
-  mu_.unlock();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+
+  if (IsEmpty()) {
+    page->WUnlatch();
+    buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+    return nullptr;
+  }
 
   // if  root and leaf - new tree - return directly
   // if root ok, then recursively search
@@ -749,24 +767,24 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
 // if parents are not safe, they exist in transaction
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WType op, Transaction *transaction) {
-  mu_.lock();
-  if (IsEmpty()) {
-    mu_.unlock();
-    return nullptr;
-  }
 
+  // get virtual root - must get virtual root while with mu
+  // if update can potentially affect root 
+  // virtual root's wlatch is held
   Page *page;
   Page *childPage;
   BPlusTreePage *page_node;
   page_id_t val;
 
-  // get virtual root - must get virtual root while with mu
-  // if update can potentially affect root 
-  // virtual root's wlatch is held
   page = buffer_pool_manager_->FetchPage(virtual_root_id_);
   page->WLatch();
-  mu_.unlock();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+
+  if (IsEmpty()) {
+    page->WUnlatch();
+    buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+    return nullptr;
+  }
 
   // traverse
   while (!page_node->IsLeafPage() || page->GetPageId() == virtual_root_id_) {
