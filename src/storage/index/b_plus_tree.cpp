@@ -74,7 +74,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
     return false;
   }
 
-  auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
+  auto *leaf_page_node = reinterpret_cast<LeafPage *>(page->GetData());
 
   ValueType val;
   bool ok = leaf_page_node->Lookup(key, &val, comparator_);
@@ -138,7 +138,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   auto *root_page = new_rootL(true);
 
   // init new tree (as leaf)
-  auto *root_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(root_page->GetData());
+  auto *root_node = reinterpret_cast<LeafPage *>(root_page->GetData());
   root_node->Init(root_page_id_, INVALID_PAGE_ID, leaf_max_size_);
 
   // insert; do not need to handle duplicate
@@ -684,12 +684,10 @@ bool BPLUSTREE_TYPE::is_pid_in_txns(Transaction *transaction, page_id_t pid) {
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::check_txns(Transaction *transaction) {
   if (!transaction->GetPageSet()->empty()) {
-    LOG_DEBUG("fatal - transaction page set");
-    // transaction->GetPageSet()->clear();
+    throw Exception(ExceptionType::INVALID, "check_txns");
   }
   if (!transaction->GetDeletedPageSet()->empty()) {
-    LOG_DEBUG("fatal - transaction delete page set");
-    // transaction->GetDeletedPageSet()->clear();
+    throw Exception(ExceptionType::INVALID, "check_txns");
   }
 }
 
