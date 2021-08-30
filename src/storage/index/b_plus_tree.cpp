@@ -411,10 +411,9 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
     // del
     if (parent_should_del) {  // need to del parent page here
+      LOG_DEBUG("AddIntoDeletedPageSet - page_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(),
+                sibling_page->GetPageId(), node->GetPageId());
       transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
-      parent_page->WUnlatch();
-      buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);  // because in WRITE_FindLeafPage it is also pin
-      buffer_pool_manager_->DeletePage(parent_node->GetPageId());
     }
     if (cur_index == 0) {  // sibling need to be deleted - else our caller will handle - and has no latch
       buffer_pool_manager_->DeletePage(sibling_node->GetPageId());
@@ -828,20 +827,21 @@ bool BPLUSTREE_TYPE::isSafe(WType op, Page *childPage) {
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty) {
   // this is a pointer
-  std::shared_ptr<std::deque<Page *>> page_set = transaction->GetPageSet();
-
-  // LOG_DEBUG("enter free_ancestor: %ld", transaction->GetPageSet()->size());
+  auto page_set = transaction->GetPageSet();
+  auto del_page_set = transaction->GetDeletedPageSet();
 
   while (!page_set->empty()) {
     Page *p = page_set->front();
 
-    // if in delete set, then it is deleted already
-    if (transaction->GetDeletedPageSet()->find(p->GetPageId()) == transaction->GetDeletedPageSet()->end()) {
-      if (b_debug_msg) {
-        LOG_DEBUG("free page id: %d", p->GetPageId());
-      }
-      p->WUnlatch();
-      buffer_pool_manager_->UnpinPage(p->GetPageId(), ancestor_dirty);
+    p->WUnlatch();
+    buffer_pool_manager_->UnpinPage(p->GetPageId(), ancestor_dirty);
+
+    if (del_page_set->find(p->GetPageId()) != del_page_set->end()) {
+      LOG_DEBUG("del page id: %d", p->GetPageId());
+      LOG_DEBUG("size: %ld", del_page_set->size());
+      buffer_pool_manager_->DeletePage(p->GetPageId());
+      transaction->GetDeletedPageSet()->erase(p->GetPageId());
+      LOG_DEBUG("size: %ld", del_page_set->size());
     }
 
     // notice this clears elem in transaction - because page_set is a pointer
@@ -850,10 +850,17 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
   // manual clear
   if (!page_set->empty() || !transaction->GetPageSet()->empty()) {
-    transaction->GetPageSet()->clear();
+    LOG_DEBUG("fatal - GetPageSet");
+    // transaction->GetPageSet()->clear();
   }
   if (!transaction->GetDeletedPageSet()->empty()) {
-    transaction->GetDeletedPageSet()->clear();
+    LOG_DEBUG("fatal - GetDeletedPageSet");
+    auto p = transaction->GetDeletedPageSet();
+    for (auto &i : *p) {
+      LOG_DEBUG("%d", i);
+    }
+    LOG_DEBUG("size: %ld", transaction->GetDeletedPageSet()->size());
+    throw Exception(ExceptionType::INVALID, "del");
   }
   // transaction->GetPageSet()->clear();
 }
