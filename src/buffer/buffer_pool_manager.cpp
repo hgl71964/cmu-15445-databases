@@ -216,7 +216,7 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
   // 2.
   if (pages_[page_table_[page_id]].pin_count_ > 0) {
-    LOG_DEBUG("del page id: %d - pin_count: %d", page_id, pages_[page_table_[page_id]].pin_count_);
+    LOG_DEBUG("try to del page id: %d - but pin_count: %d", page_id, pages_[page_table_[page_id]].pin_count_);
     return false;
   }
 

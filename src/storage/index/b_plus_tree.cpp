@@ -250,7 +250,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   if (old_node->IsRootPage()) {
     // check
     if (!is_pid_in_txns(transaction, virtual_root_id_)) {
-      LOG_DEBUG("fatal - root - InsertIntoParent");
+      throw Exception(ExceptionType::INVALID, "fatal - root - InsertIntoParent");
     }
 
     auto *root_page = new_rootL(false);
@@ -276,7 +276,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
 
   // check
   if (!is_pid_in_txns(transaction, parent_id)) {
-    LOG_DEBUG("fatal - InsertIntoParent");
+    throw Exception(ExceptionType::INVALID, "fatal - InsertIntoParent");
   }
 
   // insert into parent, adopt
@@ -361,7 +361,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   // root - termination of recursion
   if (node->IsRootPage()) {
     if (!is_pid_in_txns(transaction, virtual_root_id_)) {
-      LOG_DEBUG("fatal - AdjustRoot");
+      throw Exception(ExceptionType::INVALID, "fatal - AdjustRoot");
     }
     return AdjustRoot(node);
   }
@@ -373,7 +373,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
   // check
   if (!is_pid_in_txns(transaction, parent_page->GetPageId())) {
-    LOG_DEBUG("fatal - CoalesceOrRedistribute");
+    throw Exception(ExceptionType::INVALID, "fatal - CoalesceOrRedistribute");
   }
 
   // get sibling - and latch
@@ -411,8 +411,11 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
     // del
     if (parent_should_del) {  // need to del parent page here
-      LOG_DEBUG("AddIntoDeletedPageSet - page_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(),
+      LOG_DEBUG("addintodeletedpageset - parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(),
                 sibling_page->GetPageId(), node->GetPageId());
+      LOG_DEBUG("addintodeletedpageset - parent_pin_count: %d - sibling_pin_count: %d", parent_page->GetPinCount(),
+                sibling_page->GetPinCount());
+
       transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
     }
     if (cur_index == 0) {  // sibling need to be deleted - else our caller will handle - and has no latch
@@ -837,11 +840,18 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
     buffer_pool_manager_->UnpinPage(p->GetPageId(), ancestor_dirty);
 
     if (del_page_set->find(p->GetPageId()) != del_page_set->end()) {
-      LOG_DEBUG("del page id: %d", p->GetPageId());
-      LOG_DEBUG("size: %ld", del_page_set->size());
+      LOG_DEBUG("del page id: %d - pin_count: %d", p->GetPageId(), p->GetPinCount());
+      LOG_DEBUG("addr: %p - addr: %p", del_page_set.get(), transaction->GetDeletedPageSet().get());
+      for (auto &i : *del_page_set) {
+        LOG_DEBUG("%d", i);
+      }
+
       buffer_pool_manager_->DeletePage(p->GetPageId());
       transaction->GetDeletedPageSet()->erase(p->GetPageId());
-      LOG_DEBUG("size: %ld", del_page_set->size());
+
+      for (auto &i : *del_page_set) {
+        LOG_DEBUG("%d", i);
+      }
     }
 
     // notice this clears elem in transaction - because page_set is a pointer
