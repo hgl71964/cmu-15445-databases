@@ -320,11 +320,12 @@ INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   check_txns(transaction);
 
-  // fetch - page hold WRITE latch
+  // fetch - page hold WRITE latch -
   auto *page = WRITE_FindLeafPage(key, false, WType::DELETE, transaction);
-  if (page == nullptr) {
-    // throw Exception(ExceptionType::INVALID, "remove");
-    // isEmpty
+  if (page == nullptr) {  // nullptr - empty - return immediately
+    if (!IsEmpty()) {
+      throw Exception(ExceptionType::INVALID, "fatal - remove");
+    }
     return;
   }
   auto *leaf_page_node = reinterpret_cast<LeafPage *>(page->GetData());
@@ -333,15 +334,10 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   int original_size = leaf_page_node->GetSize();
   int remain_size = leaf_page_node->RemoveAndDeleteRecord(key, comparator_);
   bool has_modify = (original_size != remain_size);
-
   if (!has_modify) {
     release_N_unPin(page, transaction, false);  // page, ancestor not dirty - release and free
     return;
   }
-
-  // if (b_debug_msg) {
-  //  LOG_DEBUG("REMOVE - key: %ld", key.ToString());
-  //}
 
   // redist or merge
   bool should_delete = false;
@@ -350,7 +346,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   }
 
   // close - and ancestor
-  release_N_unPin(page, transaction, true);  // page, ancestor dirty - those have been del will be addressed
+  release_N_unPin(page, transaction, true);  // page, ancestor dirty - del will be addressed
   if (should_delete) {
     buffer_pool_manager_->DeletePage(leaf_page_node->GetPageId());
   }
@@ -367,9 +363,6 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
-  N *sibling_node;
-  int cur_index;
-
   // root - termination of recursion
   if (node->IsRootPage()) {
     if (!is_pid_in_txns(transaction, virtual_root_id_)) {
@@ -381,12 +374,12 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   // get parent - and we must have its latch
   auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
   auto *parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
-  cur_index = parent_node->ValueIndex(node->GetPageId());
+  int cur_index = parent_node->ValueIndex(node->GetPageId());
 
   // get sibling - and latch
   auto *sibling_page = get_sibling(cur_index, parent_node);
   sibling_page->WLatch();
-  sibling_node = reinterpret_cast<N *>(sibling_page->GetData());
+  auto *sibling_node = reinterpret_cast<N *>(sibling_page->GetData());
 
   // check
   if (!is_pid_in_txns(transaction, parent_page->GetPageId())) {
@@ -433,6 +426,21 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
     buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
 
+    // check
+    if (parent_page->GetPageId() == virtual_root_id_ || sibling_page->GetPageId() == virtual_root_id_) {
+      LOG_DEBUG("after coalesce");
+      LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_page->GetPageId(),
+                node->GetPageId());
+      {
+        Page *page;
+        BPlusTreePage *page_node;
+        page = buffer_pool_manager_->FetchPage(root_page_id_);
+        page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+        ToString(page_node, buffer_pool_manager_);
+      }
+      throw Exception(ExceptionType::INVALID, "fatal - virtual_root_ - CoalesceOrRedistribute");
+    }
+
     // del
     if (parent_should_del) {  // need to del parent page here
       LOG_DEBUG("addintodeletedpageset - parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(),
@@ -443,7 +451,11 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
       transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
     }
-    if (cur_index == 0) {  // sibling need to be deleted - else our caller will handle - and has no latch
+    if (cur_index == 0) {  // depending on cur_index - either sibling or me need to del
+      if (sibling_page->GetPinCount() != 0) {
+        LOG_DEBUG("del sibling id: %d - pin_count: %d", sibling_node->GetPageId(), sibling_page->GetPinCount());
+        throw Exception(ExceptionType::INVALID, "sibling del");
+      }
       buffer_pool_manager_->DeletePage(sibling_node->GetPageId());
     }
   }
@@ -471,8 +483,8 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
   if (isLeaf) {
     // resolve leaf type
     //
-    auto *tmp_n = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(*neighbor_node);
-    auto *tmp = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(*node);
+    auto *tmp_n = reinterpret_cast<LeafPage *>(*neighbor_node);
+    auto *tmp = reinterpret_cast<LeafPage *>(*node);
 
     // merge
     if (index == 0) {
@@ -877,23 +889,13 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
       buffer_pool_manager_->UnpinPage(pid, ancestor_dirty);
     }
 
-    // notice this clears elem in transaction - because page_set is a pointer
-    page_set->pop_front();
-
+    // if in del set, del
     if (transaction->GetDeletedPageSet()->find(pid) != transaction->GetDeletedPageSet()->end()) {
-      LOG_DEBUG("del page id: %d - pin_count: %d", pid, p->GetPinCount());
       buffer_pool_manager_->DeletePage(pid);
       transaction->GetDeletedPageSet()->erase(pid);
-
-      // for (auto &i : *(transaction->GetDeletedPageSet())) {
-      //  LOG_DEBUG("%d", i);
-      //}
-
-      // for (auto &i : *(transaction->GetDeletedPageSet())) {
-      //  LOG_DEBUG("%d", i);
-      //}
-      // LOG_DEBUG("size: %ld", transaction->GetDeletedPageSet()->size());
     }
+    // notice this clears elem in transaction - because page_set is a pointer
+    page_set->pop_front();
   }
 
   // check
