@@ -20,7 +20,7 @@
 namespace bustub {
 
 namespace {
-const bool b_debug_msg = true;
+const bool b_debug_msg = false;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -38,10 +38,10 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
   root_node->Init(virtual_root_id_, INVALID_PAGE_ID, 0);
   buffer_pool_manager_->UnpinPage(virtual_root_id_, true);
 
-  if (b_debug_msg) {
-    LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
-    LOG_DEBUG("virtual root id: %d", virtual_root_id_);
-  }
+  // if (b_debug_msg) {
+  //  LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
+  //  LOG_DEBUG("virtual root id: %d", virtual_root_id_);
+  //}
 }
 
 /*
@@ -278,6 +278,18 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   if (!is_pid_in_txns(transaction, parent_id)) {
     throw Exception(ExceptionType::INVALID, "fatal - InsertIntoParent");
   }
+  if (old_node->GetPageId() == virtual_root_id_ || new_node->GetPageId() == virtual_root_id_) {
+    LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_page_node->GetPageId(), new_node->GetPageId(),
+              old_node->GetPageId());
+    {
+      Page *page;
+      BPlusTreePage *page_node;
+      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+      ToString(page_node, buffer_pool_manager_);
+    }
+    throw Exception(ExceptionType::INVALID, "fatal - InsertIntoParent - CoalesceOrRedistribute");
+  }
 
   // insert into parent, adopt
   auto new_size = parent_page_node->InsertNodeAfter(old_node->GetPageId(), key, new_node->GetPageId());
@@ -371,15 +383,27 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   auto *parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
   cur_index = parent_node->ValueIndex(node->GetPageId());
 
-  // check
-  if (!is_pid_in_txns(transaction, parent_page->GetPageId())) {
-    throw Exception(ExceptionType::INVALID, "fatal - CoalesceOrRedistribute");
-  }
-
   // get sibling - and latch
   auto *sibling_page = get_sibling(cur_index, parent_node);
   sibling_page->WLatch();
   sibling_node = reinterpret_cast<N *>(sibling_page->GetData());
+
+  // check
+  if (!is_pid_in_txns(transaction, parent_page->GetPageId())) {
+    throw Exception(ExceptionType::INVALID, "fatal - CoalesceOrRedistribute");
+  }
+  if (parent_page->GetPageId() == virtual_root_id_ || sibling_node->GetPageId() == virtual_root_id_) {
+    LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_page->GetPageId(),
+              node->GetPageId());
+    {
+      Page *page;
+      BPlusTreePage *page_node;
+      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+      ToString(page_node, buffer_pool_manager_);
+    }
+    throw Exception(ExceptionType::INVALID, "fatal - virtual_root_ - CoalesceOrRedistribute");
+  }
 
   /**
   NOTE: now node, sibling_node, parent_node are open - but node will be closed by caller
@@ -413,8 +437,9 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     if (parent_should_del) {  // need to del parent page here
       LOG_DEBUG("addintodeletedpageset - parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(),
                 sibling_page->GetPageId(), node->GetPageId());
-      LOG_DEBUG("addintodeletedpageset - parent_pin_count: %d - sibling_pin_count: %d", parent_page->GetPinCount(),
+      LOG_DEBUG("parent_pin_count: %d - sibling_pin_count: %d", parent_page->GetPinCount(),
                 sibling_page->GetPinCount());
+      LOG_DEBUG("root_id: %d - virtual_root_id: %d", root_page_id_, virtual_root_id_);
 
       transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
     }
@@ -837,7 +862,11 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
     page_id_t pid = p->GetPageId();
 
     p->WUnlatch();
-    buffer_pool_manager_->UnpinPage(pid, ancestor_dirty);
+    if (pid == virtual_root_id_) {
+      buffer_pool_manager_->UnpinPage(pid, false);
+    } else {
+      buffer_pool_manager_->UnpinPage(pid, ancestor_dirty);
+    }
 
     // notice this clears elem in transaction - because page_set is a pointer
     page_set->pop_front();
