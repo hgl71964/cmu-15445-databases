@@ -20,7 +20,7 @@
 namespace bustub {
 
 namespace {
-const bool b_debug_msg = false;
+const bool b_debug_msg = true;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -79,10 +79,10 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   ValueType val;
   bool ok = leaf_page_node->Lookup(key, &val, comparator_);
 
-  if (b_debug_msg) {
-    LOG_DEBUG("GET - key: %ld - val_slot: %d - find: %d - page_id: %d", key.ToString(), val.GetSlotNum(), ok,
-              leaf_page_node->GetPageId());
-  }
+  // if (b_debug_msg) {
+  //  LOG_DEBUG("GET - key: %ld - val_slot: %d - find: %d - page_id: %d", key.ToString(), val.GetSlotNum(), ok,
+  //            leaf_page_node->GetPageId());
+  //}
 
   if (ok) {
     result->push_back(std::move(val));
@@ -119,9 +119,9 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   // 2. insert - ok = no duplicate
   bool ok = InsertIntoLeaf(key, value, transaction);
 
-  if (b_debug_msg) {
-    LOG_DEBUG("INSERT - key: %ld - val_slot: %d - ok: %d", key.ToString(), value.GetSlotNum(), ok);
-  }
+  // if (b_debug_msg) {
+  //  LOG_DEBUG("INSERT - key: %ld - val_slot: %d - ok: %d", key.ToString(), value.GetSlotNum(), ok);
+  //}
 
   return ok;
 }
@@ -327,9 +327,9 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     return;
   }
 
-  if (b_debug_msg) {
-    LOG_DEBUG("REMOVE - key: %ld", key.ToString());
-  }
+  // if (b_debug_msg) {
+  //  LOG_DEBUG("REMOVE - key: %ld", key.ToString());
+  //}
 
   // redist or merge
   bool should_delete = false;
@@ -880,7 +880,7 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   // throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
-  throw Exception(ExceptionType::INVALID, "not used");
+  LOG_ERROR("only used for checkpoint 1");
 
   // protect root
   if (IsEmpty()) {
