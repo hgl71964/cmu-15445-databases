@@ -831,37 +831,36 @@ INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty) {
   // this is a pointer
   auto page_set = transaction->GetPageSet();
-  auto del_page_set = transaction->GetDeletedPageSet();
 
   while (!page_set->empty()) {
     Page *p = page_set->front();
+    page_id_t pid = p->GetPageId();
 
     p->WUnlatch();
-    buffer_pool_manager_->UnpinPage(p->GetPageId(), ancestor_dirty);
-
-    if (del_page_set->find(p->GetPageId()) != del_page_set->end()) {
-      LOG_DEBUG("del page id: %d - pin_count: %d", p->GetPageId(), p->GetPinCount());
-      LOG_DEBUG("addr: %p - addr: %p", del_page_set.get(), transaction->GetDeletedPageSet().get());
-      for (auto &i : *del_page_set) {
-        LOG_DEBUG("%d", i);
-      }
-
-      buffer_pool_manager_->DeletePage(p->GetPageId());
-      transaction->GetDeletedPageSet()->erase(p->GetPageId());
-
-      for (auto &i : *del_page_set) {
-        LOG_DEBUG("%d", i);
-      }
-    }
+    buffer_pool_manager_->UnpinPage(pid, ancestor_dirty);
 
     // notice this clears elem in transaction - because page_set is a pointer
     page_set->pop_front();
+
+    if (transaction->GetDeletedPageSet()->find(pid) != transaction->GetDeletedPageSet()->end()) {
+      LOG_DEBUG("del page id: %d - pin_count: %d", pid, p->GetPinCount());
+      buffer_pool_manager_->DeletePage(p->GetPageId());
+
+      // for (auto &i : *(transaction->GetDeletedPageSet())) {
+      //  LOG_DEBUG("%d", i);
+      //}
+
+      transaction->GetDeletedPageSet()->erase(pid);
+      // for (auto &i : *(transaction->GetDeletedPageSet())) {
+      //  LOG_DEBUG("%d", i);
+      //}
+      // LOG_DEBUG("size: %ld", transaction->GetDeletedPageSet()->size());
+    }
   }
 
   // manual clear
   if (!page_set->empty() || !transaction->GetPageSet()->empty()) {
     LOG_DEBUG("fatal - GetPageSet");
-    // transaction->GetPageSet()->clear();
   }
   if (!transaction->GetDeletedPageSet()->empty()) {
     LOG_DEBUG("fatal - GetDeletedPageSet");
@@ -872,7 +871,6 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
     LOG_DEBUG("size: %ld", transaction->GetDeletedPageSet()->size());
     throw Exception(ExceptionType::INVALID, "del");
   }
-  // transaction->GetPageSet()->clear();
 }
 
 /*
