@@ -38,10 +38,10 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
   root_node->Init(virtual_root_id_, INVALID_PAGE_ID, 0);
   buffer_pool_manager_->UnpinPage(virtual_root_id_, true);
 
-  // if (b_debug_msg) {
-  //  LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
-  //  LOG_DEBUG("virtual root id: %d", virtual_root_id_);
-  //}
+  if (b_debug_msg) {
+    LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
+    LOG_DEBUG("virtual root id: %d", virtual_root_id_);
+  }
 }
 
 /*
@@ -571,7 +571,12 @@ INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   // case 2
   if (old_root_node->IsLeafPage()) {
-    return (old_root_node->GetSize() == 0);
+    bool should_del = (old_root_node->GetSize() == 0);
+    if (should_del) {
+      root_page_id_ = INVALID_PAGE_ID;
+      UpdateRootPageId(false);
+    }
+    return should_del;
   }
 
   // internal page - if have more than one child - it is ok
@@ -861,6 +866,12 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
     Page *p = page_set->front();
     page_id_t pid = p->GetPageId();
 
+    // check
+    // if (p->GetPinCount() > 0) {
+    //  LOG_DEBUG("pid: %d, pin_count: %d", pid, p->GetPinCount());
+    //  throw Exception(ExceptionType::INVALID, "free ancestor");
+    //}
+
     p->WUnlatch();
     if (pid == virtual_root_id_) {
       buffer_pool_manager_->UnpinPage(pid, false);
@@ -873,13 +884,13 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
     if (transaction->GetDeletedPageSet()->find(pid) != transaction->GetDeletedPageSet()->end()) {
       LOG_DEBUG("del page id: %d - pin_count: %d", pid, p->GetPinCount());
-      buffer_pool_manager_->DeletePage(p->GetPageId());
+      buffer_pool_manager_->DeletePage(pid);
+      transaction->GetDeletedPageSet()->erase(pid);
 
       // for (auto &i : *(transaction->GetDeletedPageSet())) {
       //  LOG_DEBUG("%d", i);
       //}
 
-      transaction->GetDeletedPageSet()->erase(pid);
       // for (auto &i : *(transaction->GetDeletedPageSet())) {
       //  LOG_DEBUG("%d", i);
       //}
@@ -887,7 +898,7 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
     }
   }
 
-  // manual clear
+  // check
   if (!page_set->empty() || !transaction->GetPageSet()->empty()) {
     LOG_DEBUG("fatal - GetPageSet");
   }
