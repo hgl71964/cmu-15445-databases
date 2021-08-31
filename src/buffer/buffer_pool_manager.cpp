@@ -84,7 +84,11 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 
   // 3.
   auto old_page_id = pages_[frame_id].page_id_;
-  page_table_.erase(old_page_id);
+  if (page_table_.find(old_page_id) != page_table_.end()) {
+    LOG_DEBUG("%d - size %ld", page_table_.find(old_page_id) != page_table_.end(), page_table_.size());
+    page_table_.erase(old_page_id);
+    LOG_DEBUG("%d - size %ld", page_table_.find(old_page_id) != page_table_.end(), page_table_.size());
+  }
   page_table_[page_id] = frame_id;
 
   // 4.
@@ -189,7 +193,11 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   // delete from page table
   page_id_t old_pid = pages_[new_frame_id].page_id_;
-  page_table_.erase(old_pid);
+  if (page_table_.find(old_pid) != page_table_.end()) {
+    LOG_DEBUG("%d - size %ld", page_table_.find(old_pid) != page_table_.end(), page_table_.size());
+    page_table_.erase(old_pid);
+    LOG_DEBUG("%d - size %ld", page_table_.find(old_pid) != page_table_.end(), page_table_.size());
+  }
 
   // flush if dirty
   if (pages_[new_frame_id].is_dirty_) {
@@ -240,7 +248,11 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   // 3.
   frame_id_t free_frame_id = page_table_[page_id];
   page_id_t pid = page_id;
-  page_table_.erase(pid);
+  if (page_table_.find(pid) != page_table_.end()) {
+    LOG_DEBUG("%d - size %ld", page_table_.find(pid) != page_table_.end(), page_table_.size());
+    page_table_.erase(pid);
+    LOG_DEBUG("%d - size %ld", page_table_.find(pid) != page_table_.end(), page_table_.size());
+  }
 
   // LOG_INFO("bpm - update %d - %d", page_id, free_frame_id);
 
@@ -320,7 +332,7 @@ void BufferPoolManager::check() {
     auto pid = it.first;
     auto frame_id = it.second;
     if (pages_[frame_id].GetPageId() != pid) {
-      LOG_ERROR("check %d %d", pid, pages_[frame_id].GetPageId());
+      LOG_ERROR("check %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id);
       throw Exception(ExceptionType::INVALID, "bpm check");
     }
   }
