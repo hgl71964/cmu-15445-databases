@@ -420,18 +420,18 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   if (!is_pid_in_txns(transaction, parent_node->GetPageId())) {
     throw Exception(ExceptionType::INVALID, "fatal - CoalesceOrRedistribute");
   }
-  if (parent_node->GetPageId() == virtual_root_id_ || sibling_node->GetPageId() == virtual_root_id_) {
-    LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_page->GetPageId(),
-              node->GetPageId());
-    {
-      Page *page;
-      BPlusTreePage *page_node;
-      page = fetch_page(root_page_id_);
-      page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
-      ToString(page_node, buffer_pool_manager_);
-    }
-    throw Exception(ExceptionType::INVALID, "fatal - virtual_root_ - CoalesceOrRedistribute");
-  }
+  //if (parent_node->GetPageId() == virtual_root_id_ || sibling_node->GetPageId() == virtual_root_id_) {
+  //  LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_page->GetPageId(),
+  //            node->GetPageId());
+  //  {
+  //    Page *page;
+  //    BPlusTreePage *page_node;
+  //    page = fetch_page(root_page_id_);
+  //    page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+  //    ToString(page_node, buffer_pool_manager_);
+  //  }
+  //  throw Exception(ExceptionType::INVALID, "fatal - virtual_root_ - CoalesceOrRedistribute");
+  //}
 
   /**
   NOTE: now node, sibling_node, parent_node are open - but node will be closed by caller
@@ -461,7 +461,6 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
       LOG_DEBUG("right after coalesce");
       LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_node->GetPageId(),
                 node->GetPageId());
-      LOG_DEBUG("parent: %p - sibling_id: %p, node_id: %p", parent_node, sibling_node, node);
       LOG_DEBUG("root_id: %d - virtual_root_id: %d", root_page_id_, virtual_root_id_);
       LOG_DEBUG("cur_index: %d", cur_index);
       LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
@@ -550,34 +549,18 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
       (*parent)->Remove(index);                                 // inform parent
     }
   }
-  // check
-  if ((*parent)->GetPageId() == virtual_root_id_ || (*neighbor_node)->GetPageId() == virtual_root_id_) {
-    LOG_DEBUG("coalesce");
-    LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", (*parent)->GetPageId(), (*neighbor_node)->GetPageId(),
-              (*node)->GetPageId());
-    LOG_DEBUG("cur_index: %d", index);
-    {
-      Page *page;
-      BPlusTreePage *page_node;
-      page = fetch_page(root_page_id_);
-      page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
-      ToString(page_node, buffer_pool_manager_);
-    }
-    throw Exception(ExceptionType::INVALID, "fatal - coalesce");
-  }
 
   // recursively check parent - now parent is 'leaf'
   if ((*parent)->GetSize() < (*parent)->GetMinSize()) {
     bool res = CoalesceOrRedistribute(*parent, transaction);
 
-    // check
-    if (res || (*parent)->GetPageId() == virtual_root_id_ || (*neighbor_node)->GetPageId() == virtual_root_id_) {
-      LOG_DEBUG("coalesce");
-      LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", (*parent)->GetPageId(), (*neighbor_node)->GetPageId(),
-                (*node)->GetPageId());
-      LOG_DEBUG("parent: %p - sibling: %p, node: %p", (*parent), (*neighbor_node), (*node));
-      LOG_DEBUG("cur_index: %d", index);
-    }
+  //  // check
+  //  if ((*parent)->GetPageId() == virtual_root_id_ || (*neighbor_node)->GetPageId() == virtual_root_id_) {
+  //    LOG_DEBUG("coalesce");
+  //    LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", (*parent)->GetPageId(), (*neighbor_node)->GetPageId(),
+  //              (*node)->GetPageId());
+  //    LOG_DEBUG("cur_index: %d", index);
+  //  }
 
     return res;
   }
@@ -769,7 +752,7 @@ Page *BPLUSTREE_TYPE::fetch_page(page_id_t pid) {
   auto *page = buffer_pool_manager_->FetchPage(pid);
   if (page->GetPageId() != pid) {
     LOG_DEBUG("fetch_page %d - %d", pid, page->GetPageId());
-    // throw Exception(ExceptionType::INVALID, "new page");
+    throw Exception(ExceptionType::INVALID, "new page");
   }
   if (page == nullptr) {
     throw Exception(ExceptionType::OUT_OF_MEMORY, "out of mem");

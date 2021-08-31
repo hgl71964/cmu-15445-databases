@@ -163,6 +163,8 @@ class BufferPoolManager {
    */
   frame_id_t Find_replacementL();
 
+  void check();
+
   /**
    * check if all frames in the buffer pool are pinned
    */

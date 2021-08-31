@@ -54,14 +54,16 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
+  check();
+
   // 1.1
   if (page_table_.find(page_id) != page_table_.end()) {
     frame_id_t frame_id = page_table_[page_id];
     replacer_->Pin(frame_id);
     pages_[frame_id].pin_count_ += 1;
 
-    if (debug_msg) {
-      LOG_INFO("FetchPageImpl - found - page_id: %d", page_id);
+    if (pages_[frame_id].GetPageId() != page_id) {
+      LOG_ERROR("FetchPageImpl fatal - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(), page_id);
     }
     return &pages_[frame_id];
   }
@@ -101,12 +103,21 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
   std::scoped_lock<std::mutex> lock(latch_);
 
+  check();
+
   // does not exist
   if (page_table_.find(page_id) == page_table_.end()) {
     LOG_ERROR("unpin page_id: %d", page_id);
     return true;
   }
   if (pages_[page_table_[page_id]].pin_count_ <= 0) {
+    // LOG_INFO("over-unpin page_id: %d - pid: %d - pin count %d  ", page_id, pages_[page_table_[page_id]].GetPageId(),
+    //         pages_[page_table_[page_id]].pin_count_);
+    return false;
+  }
+
+  if (pages_[page_table_[page_id]].GetPageId() != page_id) {
+    LOG_ERROR("unpin %d -  %d", page_id, pages_[page_table_[page_id]].GetPageId());
     return false;
   }
 
@@ -159,6 +170,8 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
+  check();
+
   // 0.
   page_id_t new_page_id = disk_manager_->AllocatePage();
 
@@ -205,6 +218,8 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
 
   std::scoped_lock<std::mutex> lock(latch_);
+
+  check();
 
   // 0.
   disk_manager_->DeallocatePage(page_id);
@@ -291,6 +306,15 @@ frame_id_t BufferPoolManager::Find_replacementL() {
     }
   }
   return fid;
+}
+void BufferPoolManager::check() {
+  for (auto it = page_table_.begin(); it != page_table_.end(); ++it) {
+    auto pid = it->first;
+    auto frame_id = it->second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      LOG_ERROR("check %d %d", pid, pages_[frame_id].GetPageId());
+    }
+  }
 }
 
 }  // namespace bustub
