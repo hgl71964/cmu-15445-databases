@@ -84,6 +84,8 @@ class BPlusTree {
 
  private:
   // self
+  Page *fetch_page(page_id_t pid);
+  Page *new_page(page_id_t *pid);
   Page *new_rootL(bool new_tree);
   Page *get_sibling(int index, InternalPage *parent_node);
   bool isSafe(WType op, Page *childPage);

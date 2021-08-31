@@ -31,9 +31,10 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
       buffer_pool_manager_(buffer_pool_manager),
       comparator_(comparator),
       leaf_max_size_(leaf_max_size),
-      internal_max_size_(internal_max_size) {
-  // get virtual page num
-  auto *page = buffer_pool_manager_->NewPage(&virtual_root_id_);
+      internal_max_size_(internal_max_size),
+      virtual_root_id_(0) {
+  // virtual root init
+  auto *page = new_page(&virtual_root_id_);
   auto *root_node = reinterpret_cast<InternalPage *>(page->GetData());
   root_node->Init(virtual_root_id_, INVALID_PAGE_ID, 0);
   buffer_pool_manager_->UnpinPage(virtual_root_id_, true);
@@ -171,7 +172,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
     {
       Page *page;
       BPlusTreePage *page_node;
-      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page = fetch_page(root_page_id_);
       page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
       ToString(page_node, buffer_pool_manager_);
     }
@@ -218,10 +219,7 @@ template <typename N>
 N *BPLUSTREE_TYPE::Split(N *node) {
   // new page
   page_id_t page_id;
-  auto *page = buffer_pool_manager_->NewPage(&page_id);
-  if (page == nullptr) {
-    throw Exception(ExceptionType::OUT_OF_MEMORY, "Split out of mem");
-  }
+  auto *page = new_page(&page_id);
 
   // init new nodes
   N *new_page_node = reinterpret_cast<N *>(page->GetData());
@@ -248,7 +246,7 @@ N *BPLUSTREE_TYPE::Split(N *node) {
     {
       Page *page;
       BPlusTreePage *page_node;
-      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page = fetch_page(root_page_id_);
       page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
       ToString(page_node, buffer_pool_manager_);
     }
@@ -291,13 +289,14 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
     new_node->SetParentPageId(root_page_id_);
 
     // check
-    if (old_node->GetPageId() == virtual_root_id_ || new_node->GetPageId() == virtual_root_id_) {
+    if (old_node->GetPageId() == virtual_root_id_ || new_node->GetPageId() == virtual_root_id_ ||
+        root_page->GetPageId() == virtual_root_id_) {
       LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", root_page->GetPageId(), new_node->GetPageId(),
                 old_node->GetPageId());
       {
         Page *page;
         BPlusTreePage *page_node;
-        page = buffer_pool_manager_->FetchPage(root_page_id_);
+        page = fetch_page(root_page_id_);
         page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
         ToString(page_node, buffer_pool_manager_);
       }
@@ -311,21 +310,22 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
 
   // otherwise fetch parent page
   auto parent_id = old_node->GetParentPageId();
-  auto *page = buffer_pool_manager_->FetchPage(parent_id);  // latch is hold
+  auto *page = fetch_page(parent_id);  // latch is hold
   auto *parent_page_node = reinterpret_cast<InternalPage *>(page->GetData());
 
   // check
   if (!is_pid_in_txns(transaction, parent_id)) {
     throw Exception(ExceptionType::INVALID, "fatal - InsertIntoParent");
   }
+  // check
   if (old_node->GetPageId() == virtual_root_id_ || new_node->GetPageId() == virtual_root_id_ ||
-      parent_page_node->GetPageId() == virtual_root_id_) {
+      page->GetPageId() == virtual_root_id_) {
     LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_page_node->GetPageId(), new_node->GetPageId(),
               old_node->GetPageId());
     {
       Page *page;
       BPlusTreePage *page_node;
-      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page = fetch_page(root_page_id_);
       page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
       ToString(page_node, buffer_pool_manager_);
     }
@@ -412,7 +412,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   }
 
   // get parent - and we must have its latch
-  auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
+  auto *parent_page = fetch_page(node->GetParentPageId());
   auto *parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
   int cur_index = parent_node->ValueIndex(node->GetPageId());
 
@@ -431,7 +431,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     {
       Page *page;
       BPlusTreePage *page_node;
-      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page = fetch_page(root_page_id_);
       page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
       ToString(page_node, buffer_pool_manager_);
     }
@@ -466,12 +466,14 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
       LOG_DEBUG("right after coalesce");
       LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_page->GetPageId(),
                 node->GetPageId());
+      LOG_DEBUG("parent: %p - sibling_id: %p, node_id: %p", parent_node, sibling_node, node);
+      LOG_DEBUG("root_id: %d - virtual_root_id: %d", root_page_id_, virtual_root_id_);
       LOG_DEBUG("cur_index: %d", cur_index);
       LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
       {
         Page *page;
         BPlusTreePage *page_node;
-        page = buffer_pool_manager_->FetchPage(root_page_id_);
+        page = fetch_page(root_page_id_);
         page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
         ToString(page_node, buffer_pool_manager_);
       }
@@ -482,23 +484,6 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     sibling_page->WUnlatch();
     buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
     buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
-
-    // check
-    if (parent_page->GetPageId() == virtual_root_id_ || sibling_page->GetPageId() == virtual_root_id_) {
-      LOG_DEBUG("after coalesce");
-      LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_page->GetPageId(),
-                node->GetPageId());
-      LOG_DEBUG("cur_index: %d", cur_index);
-      LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
-      {
-        Page *page;
-        BPlusTreePage *page_node;
-        page = buffer_pool_manager_->FetchPage(root_page_id_);
-        page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
-        ToString(page_node, buffer_pool_manager_);
-      }
-      throw Exception(ExceptionType::INVALID, "fatal - virtual_root_ - CoalesceOrRedistribute");
-    }
 
     // del
     if (parent_should_del) {  // need to del parent page here
@@ -581,7 +566,7 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
     {
       Page *page;
       BPlusTreePage *page_node;
-      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page = fetch_page(root_page_id_);
       page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
       ToString(page_node, buffer_pool_manager_);
     }
@@ -593,19 +578,12 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
     bool res = CoalesceOrRedistribute(*parent, transaction);
 
     // check
-    if ((*parent)->GetPageId() == virtual_root_id_ || (*neighbor_node)->GetPageId() == virtual_root_id_) {
+    if (res || (*parent)->GetPageId() == virtual_root_id_ || (*neighbor_node)->GetPageId() == virtual_root_id_) {
       LOG_DEBUG("coalesce");
       LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", (*parent)->GetPageId(), (*neighbor_node)->GetPageId(),
                 (*node)->GetPageId());
+      LOG_DEBUG("parent: %p - sibling: %p, node: %p", (*parent), (*neighbor_node), (*node));
       LOG_DEBUG("cur_index: %d", index);
-      {
-        Page *page;
-        BPlusTreePage *page_node;
-        page = buffer_pool_manager_->FetchPage(root_page_id_);
-        page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
-        ToString(page_node, buffer_pool_manager_);
-      }
-      throw Exception(ExceptionType::INVALID, "fatal - coalesce");
     }
 
     return res;
@@ -626,7 +604,7 @@ INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
   // get parent
-  auto *parent_page = buffer_pool_manager_->FetchPage(node->GetParentPageId());
+  auto *parent_page = fetch_page(node->GetParentPageId());
   auto *parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
 
   bool isLeaf = node->IsLeafPage();
@@ -697,16 +675,21 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   LOG_DEBUG("switch from: %d - to: %d", root_page_id_, val);
 
   // switch root to its only child
-  auto *page = buffer_pool_manager_->FetchPage(val);
+  auto *page = fetch_page(val);
   auto *tmp = reinterpret_cast<BPlusTreePage *>(page->GetData());
   tmp->SetParentPageId(INVALID_PAGE_ID);
 
+  if (tmp->GetPageId() != page->GetPageId() || page->GetPageId() != val) {
+    LOG_DEBUG("adjustroot %d - %d - %d", tmp->GetPageId(), page->GetPageId(), val);
+    throw Exception(ExceptionType::INVALID, "adjustroot");
+  }
+
   // switch
-  root_page_id_ = page->GetPageId();
+  root_page_id_ = val;
   UpdateRootPageId(false);
 
   // mark dirty
-  buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
+  buffer_pool_manager_->UnpinPage(val, true);
 
   return true;
 }
@@ -777,6 +760,30 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(INVALID_PAG
 /*****************************************************************************
  * UTILITIES AND DEBUG
  *****************************************************************************/
+INDEX_TEMPLATE_ARGUMENTS
+Page *BPLUSTREE_TYPE::new_page(page_id_t *pid) {
+  auto *page = buffer_pool_manager_->NewPage(pid);
+  if (page == nullptr) {
+    throw Exception(ExceptionType::OUT_OF_MEMORY, "out of mem");
+  }
+  if (page->GetPageId() != *pid) {
+    LOG_DEBUG("new_page %d - %d", *pid, page->GetPageId());
+    throw Exception(ExceptionType::INVALID, "new page");
+  }
+  return page;
+}
+INDEX_TEMPLATE_ARGUMENTS
+Page *BPLUSTREE_TYPE::fetch_page(page_id_t pid) {
+  auto *page = buffer_pool_manager_->FetchPage(pid);
+  if (page->GetPageId() != pid) {
+    LOG_DEBUG("fetch_page %d - %d", pid, page->GetPageId());
+    throw Exception(ExceptionType::INVALID, "new page");
+  }
+  if (page == nullptr) {
+    throw Exception(ExceptionType::OUT_OF_MEMORY, "out of mem");
+  }
+  return page;
+}
 
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::is_pid_in_txns(Transaction *transaction, page_id_t pid) {
@@ -804,9 +811,9 @@ INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::get_sibling(int index, InternalPage *parent_node) {
   Page *sibling_page;
   if (index == 0) {
-    sibling_page = buffer_pool_manager_->FetchPage(parent_node->ValueAt(1));  // get right sibling
+    sibling_page = fetch_page(parent_node->ValueAt(1));  // get right sibling
   } else {
-    sibling_page = buffer_pool_manager_->FetchPage(parent_node->ValueAt(index - 1));  // get left sibling
+    sibling_page = fetch_page(parent_node->ValueAt(index - 1));  // get left sibling
   }
   return sibling_page;
 }
@@ -814,18 +821,18 @@ Page *BPLUSTREE_TYPE::get_sibling(int index, InternalPage *parent_node) {
 /* abstract method to lock and unlock virtual root */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::lock() {
-  auto *page = buffer_pool_manager_->FetchPage(virtual_root_id_);
+  auto *page = fetch_page(virtual_root_id_);
   page->WLatch();
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::unlock() {
-  auto *page = buffer_pool_manager_->FetchPage(virtual_root_id_);
+  auto *page = fetch_page(virtual_root_id_);
   page->WUnlatch();
-  buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+  buffer_pool_manager_->UnpinPage(virtual_root_id_, false);
 
   // close the one from lock
-  buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+  buffer_pool_manager_->UnpinPage(virtual_root_id_, false);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -837,19 +844,8 @@ void BPLUSTREE_TYPE::release_N_unPin(Page *page, Transaction *transaction, bool 
 
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::new_rootL(bool new_tree) {
-  page_id_t page_id;
-  auto *page = buffer_pool_manager_->NewPage(&page_id);
-
-  if (page == nullptr) {
-    LOG_DEBUG("start new tree out of mem");
-    throw Exception(ExceptionType::OUT_OF_MEMORY, "start new tree out of mem");
-  }
-
-  root_page_id_ = page_id;  // mark this as root page id
-
-  // insert header page (meta data)
-  UpdateRootPageId(new_tree);  // true for start a new tree
-
+  auto *page = new_page(&root_page_id_);
+  UpdateRootPageId(new_tree);  // insert header page (meta data) - true for start a new tree
   return page;
 }
 
@@ -862,7 +858,7 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
   BPlusTreePage *page_node;
   page_id_t val;
 
-  page = buffer_pool_manager_->FetchPage(virtual_root_id_);
+  page = fetch_page(virtual_root_id_);
   page->WLatch();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
@@ -883,7 +879,7 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
     }
 
     // get child
-    childPage = buffer_pool_manager_->FetchPage(val);
+    childPage = fetch_page(val);
     childPage->RLatch();
 
     // unpin current page and find next
@@ -913,7 +909,7 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
   BPlusTreePage *page_node;
   page_id_t val;
 
-  page = buffer_pool_manager_->FetchPage(virtual_root_id_);
+  page = fetch_page(virtual_root_id_);
   page->WLatch();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
@@ -933,7 +929,7 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
     }
 
     // get child
-    childPage = buffer_pool_manager_->FetchPage(val);
+    childPage = fetch_page(val);
     childPage->WLatch();
 
     // add current page to transactions
