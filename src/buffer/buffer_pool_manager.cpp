@@ -308,9 +308,9 @@ frame_id_t BufferPoolManager::Find_replacementL() {
   return fid;
 }
 void BufferPoolManager::check() {
-  for (auto it = page_table_.begin(); it != page_table_.end(); ++it) {
-    auto pid = it->first;
-    auto frame_id = it->second;
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
     if (pages_[frame_id].GetPageId() != pid) {
       LOG_ERROR("check %d %d", pid, pages_[frame_id].GetPageId());
     }

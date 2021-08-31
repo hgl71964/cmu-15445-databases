@@ -115,10 +115,6 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   // 2. insert - ok = no duplicate
   bool ok = InsertIntoLeaf(key, value, transaction);
 
-  // if (b_debug_msg) {
-  //  LOG_DEBUG("INSERT - key: %ld - val_slot: %d - ok: %d", key.ToString(), value.GetSlotNum(), ok);
-  //}
-
   return ok;
 }
 
@@ -420,7 +416,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   if (!is_pid_in_txns(transaction, parent_node->GetPageId())) {
     throw Exception(ExceptionType::INVALID, "fatal - CoalesceOrRedistribute");
   }
-  //if (parent_node->GetPageId() == virtual_root_id_ || sibling_node->GetPageId() == virtual_root_id_) {
+  // if (parent_node->GetPageId() == virtual_root_id_ || sibling_node->GetPageId() == virtual_root_id_) {
   //  LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_page->GetPageId(),
   //            node->GetPageId());
   //  {
@@ -554,13 +550,14 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
   if ((*parent)->GetSize() < (*parent)->GetMinSize()) {
     bool res = CoalesceOrRedistribute(*parent, transaction);
 
-  //  // check
-  //  if ((*parent)->GetPageId() == virtual_root_id_ || (*neighbor_node)->GetPageId() == virtual_root_id_) {
-  //    LOG_DEBUG("coalesce");
-  //    LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", (*parent)->GetPageId(), (*neighbor_node)->GetPageId(),
-  //              (*node)->GetPageId());
-  //    LOG_DEBUG("cur_index: %d", index);
-  //  }
+    //  // check
+    //  if ((*parent)->GetPageId() == virtual_root_id_ || (*neighbor_node)->GetPageId() == virtual_root_id_) {
+    //    LOG_DEBUG("coalesce");
+    //    LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", (*parent)->GetPageId(),
+    //    (*neighbor_node)->GetPageId(),
+    //              (*node)->GetPageId());
+    //    LOG_DEBUG("cur_index: %d", index);
+    //  }
 
     return res;
   }
@@ -965,7 +962,7 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
   // check
   if (!page_set->empty() || !transaction->GetPageSet()->empty()) {
-    LOG_DEBUG("fatal - GetPageSet");
+    throw Exception(ExceptionType::INVALID, "del");
   }
   if (!transaction->GetDeletedPageSet()->empty()) {
     LOG_DEBUG("fatal - GetDeletedPageSet");
@@ -973,7 +970,6 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
     for (auto &i : *p) {
       LOG_DEBUG("%d", i);
     }
-    LOG_DEBUG("size: %ld", transaction->GetDeletedPageSet()->size());
     throw Exception(ExceptionType::INVALID, "del");
   }
 }
