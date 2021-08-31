@@ -85,13 +85,18 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   // 3.
   auto old_page_id = pages_[frame_id].page_id_;
   if (page_table_.find(old_page_id) != page_table_.end()) {
-    LOG_DEBUG("%d - size %ld", page_table_.find(old_page_id) != page_table_.end(), page_table_.size());
+    auto old_size = page_table_.size();
     page_table_.erase(old_page_id);
-    LOG_DEBUG("%d - size %ld", page_table_.find(old_page_id) != page_table_.end(), page_table_.size());
+    auto new_size = page_table_.size();
+
+    if (old_size == new_size) {
+      LOG_ERROR("page table - %d - %d", old_page_id, page_id);
+    }
   }
   page_table_[page_id] = frame_id;
 
   // 4.
+  pages_[frame_id].ResetMemory();
   pages_[frame_id].page_id_ = page_id;
   pages_[frame_id].is_dirty_ = false;
   pages_[frame_id].pin_count_ = 1;
@@ -194,9 +199,13 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // delete from page table
   page_id_t old_pid = pages_[new_frame_id].page_id_;
   if (page_table_.find(old_pid) != page_table_.end()) {
-    LOG_DEBUG("%d - size %ld", page_table_.find(old_pid) != page_table_.end(), page_table_.size());
+    auto old_size = page_table_.size();
     page_table_.erase(old_pid);
-    LOG_DEBUG("%d - size %ld", page_table_.find(old_pid) != page_table_.end(), page_table_.size());
+    auto new_size = page_table_.size();
+
+    if (old_size == new_size) {
+      LOG_DEBUG("%d - size %ld", page_table_.find(old_pid) != page_table_.end(), page_table_.size());
+    }
   }
 
   // flush if dirty
@@ -249,9 +258,13 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   frame_id_t free_frame_id = page_table_[page_id];
   page_id_t pid = page_id;
   if (page_table_.find(pid) != page_table_.end()) {
-    LOG_DEBUG("%d - size %ld", page_table_.find(pid) != page_table_.end(), page_table_.size());
+    auto old_size = page_table_.size();
     page_table_.erase(pid);
-    LOG_DEBUG("%d - size %ld", page_table_.find(pid) != page_table_.end(), page_table_.size());
+    auto new_size = page_table_.size();
+
+    if (old_size == new_size) {
+      LOG_DEBUG("%d - size %ld", pid, page_table_.size());
+    }
   }
 
   // LOG_INFO("bpm - update %d - %d", page_id, free_frame_id);
