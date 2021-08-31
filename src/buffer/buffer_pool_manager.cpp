@@ -340,6 +340,13 @@ frame_id_t BufferPoolManager::Find_replacementL() {
   }
   return fid;
 }
+void BufferPoolManager::info() {
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    LOG_INFO("bpm info %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id);
+  }
+}
 void BufferPoolManager::check() {
   for (auto &it : page_table_) {
     auto pid = it.first;

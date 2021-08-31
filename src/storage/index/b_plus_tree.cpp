@@ -416,19 +416,6 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   if (!is_pid_in_txns(transaction, parent_node->GetPageId())) {
     throw Exception(ExceptionType::INVALID, "fatal - CoalesceOrRedistribute");
   }
-  // if (parent_node->GetPageId() == virtual_root_id_ || sibling_node->GetPageId() == virtual_root_id_) {
-  //  LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_page->GetPageId(),
-  //            node->GetPageId());
-  //  {
-  //    Page *page;
-  //    BPlusTreePage *page_node;
-  //    page = fetch_page(root_page_id_);
-  //    page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
-  //    ToString(page_node, buffer_pool_manager_);
-  //  }
-  //  throw Exception(ExceptionType::INVALID, "fatal - virtual_root_ - CoalesceOrRedistribute");
-  //}
-
   /**
   NOTE: now node, sibling_node, parent_node are open - but node will be closed by caller
   NOTE: i.e. sibling_node and parent_node will be closed here
@@ -452,24 +439,6 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     // maybe recursion within callee
     bool parent_should_del = Coalesce(&sibling_node, &node, &parent_node, cur_index, transaction);
 
-    // check
-    if (parent_node->GetPageId() == virtual_root_id_ || sibling_node->GetPageId() == virtual_root_id_) {
-      LOG_DEBUG("right after coalesce");
-      LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_node->GetPageId(),
-                node->GetPageId());
-      LOG_DEBUG("root_id: %d - virtual_root_id: %d", root_page_id_, virtual_root_id_);
-      LOG_DEBUG("cur_index: %d", cur_index);
-      LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
-      {
-        Page *page;
-        BPlusTreePage *page_node;
-        page = fetch_page(root_page_id_);
-        page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
-        ToString(page_node, buffer_pool_manager_);
-      }
-      throw Exception(ExceptionType::INVALID, "fatal - virtual_root_ - CoalesceOrRedistribute");
-    }
-
     // close
     sibling_page->WUnlatch();
     buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
@@ -477,8 +446,10 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
     // del
     if (parent_should_del) {  // need to del parent page here
+      buffer_pool_manager_->info();
       LOG_DEBUG("addintodeletedpageset - parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(),
                 sibling_node->GetPageId(), node->GetPageId());
+      LOG_DEBUG("parent pin: %d - sibling pin: %d", parent_page->GetPinCount(), sibling_page->GetPageId());
       LOG_DEBUG("root_id: %d - virtual_root_id: %d", root_page_id_, virtual_root_id_);
       LOG_DEBUG("cur_index: %d", cur_index);
       LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
@@ -491,6 +462,9 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
         throw Exception(ExceptionType::INVALID, "sibling del");
       }
       buffer_pool_manager_->DeletePage(sibling_node->GetPageId());
+
+      LOG_DEBUG("del sibling id: %d - pin_count: %d", sibling_node->GetPageId(), sibling_page->GetPinCount());
+      buffer_pool_manager_->info();
     }
   }
   return node_should_delete;

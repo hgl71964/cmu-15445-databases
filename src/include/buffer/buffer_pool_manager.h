@@ -32,6 +32,9 @@ class BufferPoolManager {
   enum class CallbackType { BEFORE, AFTER };
   using bufferpool_callback_fn = void (*)(enum CallbackType, const page_id_t page_id);
 
+  void check();
+  void info();
+
   /**
    * Creates a new BufferPoolManager.
    * @param pool_size the size of the buffer pool
@@ -162,8 +165,6 @@ class BufferPoolManager {
    * find replacement pages
    */
   frame_id_t Find_replacementL();
-
-  void check();
 
   /**
    * check if all frames in the buffer pool are pinned
