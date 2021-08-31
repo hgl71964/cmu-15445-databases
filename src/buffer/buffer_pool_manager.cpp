@@ -18,6 +18,7 @@
 #include <list>
 #include <unordered_map>
 #include "common/config.h"
+#include "common/exception.h"
 #include "common/logger.h"
 #include "storage/page/page.h"
 
@@ -226,6 +227,7 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
   // 1.
   if (page_table_.find(page_id) == page_table_.end()) {
+    LOG_INFO("bpm - not find - %d", page_id);
     return true;
   }
 
@@ -237,7 +239,10 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
   // 3.
   frame_id_t free_frame_id = page_table_[page_id];
-  page_table_.erase(page_id);
+  page_id_t pid = page_id;
+  page_table_.erase(pid);
+
+  // LOG_INFO("bpm - update %d - %d", page_id, free_frame_id);
 
   // reset meta data, flush if dirty
   if (pages_[free_frame_id].is_dirty_) {
@@ -248,6 +253,9 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
     LOG_INFO("DeletePageImpl - page_id: %d", page_id);
   }
   Reset_meta_dataL(free_frame_id);
+
+  // LOG_INFO("bpm - after update %d - %d - %d", page_id, pages_[free_frame_id].GetPageId(),
+  //         pages_[free_frame_id].GetPinCount());
 
   // return to free list
   free_list_.push_back(free_frame_id);
@@ -313,6 +321,7 @@ void BufferPoolManager::check() {
     auto frame_id = it.second;
     if (pages_[frame_id].GetPageId() != pid) {
       LOG_ERROR("check %d %d", pid, pages_[frame_id].GetPageId());
+      throw Exception(ExceptionType::INVALID, "bpm check");
     }
   }
 }
