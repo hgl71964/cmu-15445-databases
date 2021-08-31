@@ -165,6 +165,19 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
     throw Exception(ExceptionType::INVALID, "InsertIntoLeaf");
   }
 
+  // check
+  if (page->GetPageId() == virtual_root_id_) {
+    LOG_DEBUG("me: %d ", page->GetPageId());
+    {
+      Page *page;
+      BPlusTreePage *page_node;
+      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+      ToString(page_node, buffer_pool_manager_);
+    }
+    throw Exception(ExceptionType::INVALID, "fatal - InsertIntoLeaf");
+  }
+
   // check if duplicate
   auto *leaf_page_node = reinterpret_cast<LeafPage *>(page->GetData());
   ValueType val;
@@ -229,6 +242,19 @@ N *BPLUSTREE_TYPE::Split(N *node) {
     tmp->MoveHalfTo(tmp_n, buffer_pool_manager_);
   }
 
+  // check
+  if (node->GetPageId() == virtual_root_id_ || new_page_node->GetPageId() == virtual_root_id_) {
+    LOG_DEBUG("sibling_id: %d, node_id: %d", new_page_node->GetPageId(), node->GetPageId());
+    {
+      Page *page;
+      BPlusTreePage *page_node;
+      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+      ToString(page_node, buffer_pool_manager_);
+    }
+    throw Exception(ExceptionType::INVALID, "fatal - split");
+  }
+
   // new page wull be used by caller, dont Unpin
   return new_page_node;
 }
@@ -264,6 +290,20 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
     old_node->SetParentPageId(root_page_id_);
     new_node->SetParentPageId(root_page_id_);
 
+    // check
+    if (old_node->GetPageId() == virtual_root_id_ || new_node->GetPageId() == virtual_root_id_) {
+      LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", root_page->GetPageId(), new_node->GetPageId(),
+                old_node->GetPageId());
+      {
+        Page *page;
+        BPlusTreePage *page_node;
+        page = buffer_pool_manager_->FetchPage(root_page_id_);
+        page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+        ToString(page_node, buffer_pool_manager_);
+      }
+      throw Exception(ExceptionType::INVALID, "fatal - check - InsertIntoParent");
+    }
+
     // done using; dirty
     buffer_pool_manager_->UnpinPage(root_node->GetPageId(), true);
     return;
@@ -278,7 +318,8 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   if (!is_pid_in_txns(transaction, parent_id)) {
     throw Exception(ExceptionType::INVALID, "fatal - InsertIntoParent");
   }
-  if (old_node->GetPageId() == virtual_root_id_ || new_node->GetPageId() == virtual_root_id_) {
+  if (old_node->GetPageId() == virtual_root_id_ || new_node->GetPageId() == virtual_root_id_ ||
+      parent_page_node->GetPageId() == virtual_root_id_) {
     LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_page_node->GetPageId(), new_node->GetPageId(),
               old_node->GetPageId());
     {
@@ -293,7 +334,6 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
 
   // insert into parent, adopt
   auto new_size = parent_page_node->InsertNodeAfter(old_node->GetPageId(), key, new_node->GetPageId());
-  new_node->SetParentPageId(parent_page_node->GetPageId());
 
   // recursive check
   if (new_size >= parent_page_node->GetMaxSize()) {
@@ -421,6 +461,23 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     // maybe recursion within callee
     bool parent_should_del = Coalesce(&sibling_node, &node, &parent_node, cur_index, transaction);
 
+    // check
+    if (parent_page->GetPageId() == virtual_root_id_ || sibling_page->GetPageId() == virtual_root_id_) {
+      LOG_DEBUG("right after coalesce");
+      LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_page->GetPageId(),
+                node->GetPageId());
+      LOG_DEBUG("cur_index: %d", cur_index);
+      LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
+      {
+        Page *page;
+        BPlusTreePage *page_node;
+        page = buffer_pool_manager_->FetchPage(root_page_id_);
+        page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+        ToString(page_node, buffer_pool_manager_);
+      }
+      throw Exception(ExceptionType::INVALID, "fatal - virtual_root_ - CoalesceOrRedistribute");
+    }
+
     // close
     sibling_page->WUnlatch();
     buffer_pool_manager_->UnpinPage(sibling_node->GetPageId(), true);
@@ -431,6 +488,8 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
       LOG_DEBUG("after coalesce");
       LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(), sibling_page->GetPageId(),
                 node->GetPageId());
+      LOG_DEBUG("cur_index: %d", cur_index);
+      LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
       {
         Page *page;
         BPlusTreePage *page_node;
@@ -448,6 +507,8 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
       LOG_DEBUG("parent_pin_count: %d - sibling_pin_count: %d", parent_page->GetPinCount(),
                 sibling_page->GetPinCount());
       LOG_DEBUG("root_id: %d - virtual_root_id: %d", root_page_id_, virtual_root_id_);
+      LOG_DEBUG("cur_index: %d", cur_index);
+      LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
 
       transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
     }
@@ -511,10 +572,43 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
       (*parent)->Remove(index);                                 // inform parent
     }
   }
+  // check
+  if ((*parent)->GetPageId() == virtual_root_id_ || (*neighbor_node)->GetPageId() == virtual_root_id_) {
+    LOG_DEBUG("coalesce");
+    LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", (*parent)->GetPageId(), (*neighbor_node)->GetPageId(),
+              (*node)->GetPageId());
+    LOG_DEBUG("cur_index: %d", index);
+    {
+      Page *page;
+      BPlusTreePage *page_node;
+      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+      ToString(page_node, buffer_pool_manager_);
+    }
+    throw Exception(ExceptionType::INVALID, "fatal - coalesce");
+  }
 
   // recursively check parent - now parent is 'leaf'
   if ((*parent)->GetSize() < (*parent)->GetMinSize()) {
-    return CoalesceOrRedistribute(*parent, transaction);
+    bool res = CoalesceOrRedistribute(*parent, transaction);
+
+    // check
+    if ((*parent)->GetPageId() == virtual_root_id_ || (*neighbor_node)->GetPageId() == virtual_root_id_) {
+      LOG_DEBUG("coalesce");
+      LOG_DEBUG("parent_id: %d - sibling_id: %d, node_id: %d", (*parent)->GetPageId(), (*neighbor_node)->GetPageId(),
+                (*node)->GetPageId());
+      LOG_DEBUG("cur_index: %d", index);
+      {
+        Page *page;
+        BPlusTreePage *page_node;
+        page = buffer_pool_manager_->FetchPage(root_page_id_);
+        page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+        ToString(page_node, buffer_pool_manager_);
+      }
+      throw Exception(ExceptionType::INVALID, "fatal - coalesce");
+    }
+
+    return res;
   }
   return false;  // if parent is fine, then do not delete parent
 }
@@ -599,6 +693,8 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   // case 1 - root has only one child - switch root node
   auto *tmp_old = reinterpret_cast<InternalPage *>(old_root_node);
   page_id_t val = tmp_old->RemoveAndReturnOnlyChild();
+
+  LOG_DEBUG("switch from: %d - to: %d", root_page_id_, val);
 
   // switch root to its only child
   auto *page = buffer_pool_manager_->FetchPage(val);
@@ -873,14 +969,8 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
   auto page_set = transaction->GetPageSet();
 
   while (!page_set->empty()) {
-    Page *p = page_set->front();
+    Page *p = page_set->back();
     page_id_t pid = p->GetPageId();
-
-    // check
-    // if (p->GetPinCount() > 0) {
-    //  LOG_DEBUG("pid: %d, pin_count: %d", pid, p->GetPinCount());
-    //  throw Exception(ExceptionType::INVALID, "free ancestor");
-    //}
 
     p->WUnlatch();
     if (pid == virtual_root_id_) {
@@ -891,11 +981,12 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
     // if in del set, del
     if (transaction->GetDeletedPageSet()->find(pid) != transaction->GetDeletedPageSet()->end()) {
+      LOG_DEBUG("delset - %d -%d", p->GetPageId(), pid);
       buffer_pool_manager_->DeletePage(pid);
       transaction->GetDeletedPageSet()->erase(pid);
     }
     // notice this clears elem in transaction - because page_set is a pointer
-    page_set->pop_front();
+    page_set->pop_back();
   }
 
   // check
