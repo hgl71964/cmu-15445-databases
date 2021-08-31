@@ -484,8 +484,6 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     if (parent_should_del) {  // need to del parent page here
       LOG_DEBUG("addintodeletedpageset - parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(),
                 sibling_node->GetPageId(), node->GetPageId());
-      LOG_DEBUG("parent_pin_count: %d - sibling_pin_count: %d", parent_page->GetPinCount(),
-                sibling_node->GetPinCount());
       LOG_DEBUG("root_id: %d - virtual_root_id: %d", root_page_id_, virtual_root_id_);
       LOG_DEBUG("cur_index: %d", cur_index);
       LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
@@ -771,7 +769,7 @@ Page *BPLUSTREE_TYPE::fetch_page(page_id_t pid) {
   auto *page = buffer_pool_manager_->FetchPage(pid);
   if (page->GetPageId() != pid) {
     LOG_DEBUG("fetch_page %d - %d", pid, page->GetPageId());
-    throw Exception(ExceptionType::INVALID, "new page");
+    // throw Exception(ExceptionType::INVALID, "new page");
   }
   if (page == nullptr) {
     throw Exception(ExceptionType::OUT_OF_MEMORY, "out of mem");
@@ -783,7 +781,7 @@ INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::is_pid_in_txns(Transaction *transaction, page_id_t pid) {
   std::shared_ptr<std::deque<Page *>> page_set = transaction->GetPageSet();
   for (auto &i : *page_set) {
-    auto *tmp = reinterpret_cast<BPlusTreePage *> (i->GetData());
+    auto *tmp = reinterpret_cast<BPlusTreePage *>(i->GetData());
     if (tmp->GetPageId() == pid) {
       return true;
     }
@@ -833,7 +831,7 @@ void BPLUSTREE_TYPE::unlock() {
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::release_N_unPin(Page *page, Transaction *transaction, bool dirty) {
   free_ancestor(transaction, dirty);  // ancestor must be dirty, otherwise it won't be in transaction
-  auto *tmp = reinterpret_cast<BPlusTreePage *> (page->GetData());
+  auto *tmp = reinterpret_cast<BPlusTreePage *>(page->GetData());
   page->WUnlatch();
   buffer_pool_manager_->UnpinPage(tmp->GetPageId(), dirty);
 }
@@ -962,7 +960,7 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
   while (!page_set->empty()) {
     Page *p = page_set->back();
-    auto *tmp = reinterpret_cast<BPlusTreePage *> (p->GetData());
+    auto *tmp = reinterpret_cast<BPlusTreePage *>(p->GetData());
     page_id_t pid = tmp->GetPageId();
 
     p->WUnlatch();
