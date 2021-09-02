@@ -81,6 +81,8 @@ class BPlusTree {
   Page *FindLeafPage(const KeyType &key, bool leftMost = false);
   Page *READ_FindLeafPage(const KeyType &key, bool leftMost = false, Transaction *transaction = nullptr);
   Page *WRITE_FindLeafPage(const KeyType &key, bool leftMost, WType op, Transaction *transaction);
+  Page *WRITE_FindLeafPage_new(const KeyType &key, const ValueType &value, bool leftMost, WType op,
+                               Transaction *transaction);
 
  private:
   // self
@@ -88,7 +90,7 @@ class BPlusTree {
   Page *new_page(page_id_t *pid);
   Page *new_rootL(bool new_tree);
   Page *get_sibling(int index, InternalPage *parent_node);
-  bool isSafe(WType op, Page *childPage);
+  bool isSafe(WType op, BPlusTreePage *node);
   void free_ancestor(Transaction *transaction, bool ancestor_dirty);
   void release_N_unPin(Page *page, Transaction *transaction, bool dirty);
   void lock();

@@ -103,13 +103,13 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) {
   // 1. if empty start new tree
-  lock();
-  if (IsEmpty()) {
-    StartNewTree(key, value);  // hold virtual root thoughtout
-    unlock();
-    return true;
-  }
-  unlock();
+  // lock();
+  // if (IsEmpty()) {
+  //  StartNewTree(key, value);  // hold virtual root thoughtout
+  //  unlock();
+  //  return true;
+  //}
+  // unlock();
   check_txns(transaction);
 
   // 2. insert - ok = no duplicate
@@ -155,9 +155,9 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction) {
   // fetch - page hold WRITE latch
-  auto *page = WRITE_FindLeafPage(key, false, WType::INSERT, transaction);
+  auto *page = WRITE_FindLeafPage_new(key, value, false, WType::INSERT, transaction);
   if (page == nullptr) {
-    throw Exception(ExceptionType::INVALID, "InsertIntoLeaf");
+    return true;
   }
 
   // check if duplicate
@@ -174,6 +174,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 
   // if full, split leaf node - now parent latch must been held
   if (new_size >= leaf_page_node->GetMaxSize()) {
+    check_parent(leaf_page_node, transaction);
     LeafPage *new_leaf_page_node = Split(leaf_page_node, transaction);
 
     auto partition_key = new_leaf_page_node->KeyAt(0);  // partition key
@@ -418,10 +419,6 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     if (cur_index == 0) {  // depending on cur_index - either sibling or me need to del
       LOG_DEBUG("del sibling id: %d - pin_count: %d - index %d", sibling_node->GetPageId(), sibling_page->GetPinCount(),
                 cur_index);
-      for (auto &i : *(transaction->GetPageSet())) {
-        auto *tmp_n = reinterpret_cast<BPlusTreePage *>(i->GetData());
-        LOG_ERROR("check %d %d", tmp_n->GetPageId(), i->GetPageId());
-      }
       transaction->AddIntoDeletedPageSet(sibling_node->GetPageId());
     }
   }
@@ -820,6 +817,61 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
     page = childPage;
     page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
   }
+  if (page == nullptr) {
+    throw Exception(ExceptionType::INVALID, "traverse");
+  }
+  return page;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+Page *BPLUSTREE_TYPE::WRITE_FindLeafPage_new(const KeyType &key, const ValueType &value, bool leftMost, WType op,
+                                             Transaction *transaction) {
+  Page *page;
+  Page *childPage;
+  BPlusTreePage *page_node;
+  page_id_t val;
+
+  page = fetch_page(virtual_root_id_);
+  page->WLatch();
+  page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+
+  if (IsEmpty()) {
+    auto k = key;
+    auto v = value;
+    StartNewTree(k, v);
+    page->WUnlatch();
+    buffer_pool_manager_->UnpinPage(page_node->GetPageId(), false);
+    return nullptr;
+  }
+
+  // traverse
+  while (!page_node->IsLeafPage() || page_node->GetPageId() == virtual_root_id_) {
+    if (page_node->GetPageId() == virtual_root_id_) {
+      val = root_page_id_;
+    } else {
+      auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
+      val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
+    }
+
+    // get child
+    childPage = fetch_page(val);
+    childPage->WLatch();
+
+    // add current page to transactions
+    transaction->AddIntoPageSet(page);
+
+    // traverse
+    page = childPage;
+    page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+
+    // check
+    if (isSafe(op, page_node)) {
+      free_ancestor(transaction, false);
+    }
+  }
+  if (page == nullptr) {
+    throw Exception(ExceptionType::INVALID, "traverse");
+  }
   return page;
 }
 
@@ -866,22 +918,24 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
     page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
     // check
-    if (isSafe(op, childPage)) {
+    if (isSafe(op, page_node)) {
       free_ancestor(transaction, false);
     }
+  }
+  if (page == nullptr) {
+    throw Exception(ExceptionType::INVALID, "traverse");
   }
   return page;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::isSafe(WType op, Page *childPage) {
-  auto *node = reinterpret_cast<BPlusTreePage *>(childPage->GetData());
-  if (op == WType::INSERT && node->GetSize() < node->GetMaxSize() - 1) {
-    return true;
-  }
-  if (op == WType::DELETE && node->GetSize() > node->GetMinSize() + 1) {  // or node->GetMinSize() + 1
-    return true;
-  }
+bool BPLUSTREE_TYPE::isSafe(WType op, BPlusTreePage *node) {
+  // if (op == WType::INSERT && node->GetSize() < node->GetMaxSize() - 1) {
+  //  return true;
+  //}
+  // if (op == WType::DELETE && node->GetSize() > node->GetMinSize() + 1) {  // or node->GetMinSize() + 1
+  //  return true;
+  //}
   return false;
 }
 
