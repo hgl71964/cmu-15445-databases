@@ -35,12 +35,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
   BPlusTreePage::SetParentPageId(parent_id);
   BPlusTreePage::SetSize(0);
   // BPlusTreePage::SetMaxSize(max_size);
-
-  if (max_size > 4) {
-    BPlusTreePage::SetMaxSize(max_size);
-  } else {
-    BPlusTreePage::SetMaxSize(4);
-  }
+  BPlusTreePage::SetMaxSize(max_size);
 }
 /*
  * Helper method to get/set the key associated with input "index"(a.k.a

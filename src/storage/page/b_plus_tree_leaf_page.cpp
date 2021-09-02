@@ -33,13 +33,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, in
   BPlusTreePage::SetPageId(page_id);
   BPlusTreePage::SetParentPageId(parent_id);
   BPlusTreePage::SetSize(0);
-
-  if (max_size > 2) {
-    BPlusTreePage::SetMaxSize(max_size);
-  } else {
-    BPlusTreePage::SetMaxSize(2);
-  }
-
+  BPlusTreePage::SetMaxSize(max_size);
   next_page_id_ = INVALID_PAGE_ID;
 }
 

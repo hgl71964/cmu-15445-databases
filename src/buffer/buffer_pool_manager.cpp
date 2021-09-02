@@ -55,7 +55,15 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
-  check();
+  gc();
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+      throw Exception(ExceptionType::INVALID, "bpm check");
+    }
+  }
 
   // 1.1
   if (page_table_.find(page_id) != page_table_.end()) {
@@ -113,7 +121,15 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
   std::scoped_lock<std::mutex> lock(latch_);
 
-  check();
+  gc();
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+      throw Exception(ExceptionType::INVALID, "bpm check");
+    }
+  }
 
   // does not exist
   if (page_table_.find(page_id) == page_table_.end()) {
@@ -149,6 +165,16 @@ bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
   std::scoped_lock<std::mutex> lock(latch_);
 
+  gc();
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+      throw Exception(ExceptionType::INVALID, "bpm check");
+    }
+  }
+
   if (page_id == INVALID_PAGE_ID) {
     LOG_ERROR("flush page INVALID_PAGE_ID");
     return false;
@@ -180,7 +206,15 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
-  check();
+  gc();
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+      throw Exception(ExceptionType::INVALID, "bpm check");
+    }
+  }
 
   // 0.
   page_id_t new_page_id = disk_manager_->AllocatePage();
@@ -237,7 +271,16 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
-  check();
+  gc();
+  LOG_INFO("%d", page_id);
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+      throw Exception(ExceptionType::INVALID, "bpm check");
+    }
+  }
 
   // 0.
   disk_manager_->DeallocatePage(page_id);
@@ -285,6 +328,15 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   // return to free list
   free_list_.push_back(free_frame_id);
 
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+      throw Exception(ExceptionType::INVALID, "bpm check");
+    }
+  }
+
   return true;
 }
 
@@ -292,6 +344,15 @@ void BufferPoolManager::FlushAllPagesImpl() {
   // You can do it!
 
   std::scoped_lock<std::mutex> lock(latch_);
+  gc();
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+      throw Exception(ExceptionType::INVALID, "bpm check");
+    }
+  }
 
   for (size_t i = 0; i < pool_size_; i++) {
     if (pages_[i].page_id_ == INVALID_PAGE_ID) {
@@ -344,7 +405,7 @@ void BufferPoolManager::info() {
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
-    LOG_INFO("bpm info %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id);
+    LOG_INFO("bpm info %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
   }
 }
 void BufferPoolManager::check() {
@@ -352,8 +413,22 @@ void BufferPoolManager::check() {
     auto pid = it.first;
     auto frame_id = it.second;
     if (pages_[frame_id].GetPageId() != pid) {
-      LOG_ERROR("check %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id);
+      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
       throw Exception(ExceptionType::INVALID, "bpm check");
+    }
+  }
+}
+void BufferPoolManager::gc() {
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      if (pages_[frame_id].GetPinCount() == 0) {
+        Reset_meta_dataL(frame_id);
+        page_table_.erase(pid);
+      } else {
+        LOG_ERROR("gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+      }
     }
   }
 }

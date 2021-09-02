@@ -94,6 +94,7 @@ class BPlusTree {
   void lock();
   void unlock();
   void check_txns(Transaction *transaction);
+  void check_parent(BPlusTreePage *node, Transaction *transaction);
   bool is_pid_in_txns(Transaction *transaction, page_id_t pid);
   // self
 
