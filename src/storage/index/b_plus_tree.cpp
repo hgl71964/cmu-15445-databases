@@ -597,7 +597,7 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
 }
 
 /*****************************************************************************
- * INDEX ITERATOR - FIXME may need to change completely for concurrent access
+ * INDEX ITERATOR
  *****************************************************************************/
 /*
  * Input parameter is void, find the leaftmost leaf page first, then construct
@@ -613,15 +613,8 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
     LOG_DEBUG("begin");
     throw Exception(ExceptionType::INVALID, "begin");
   }
-
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
-
-  auto itr = INDEXITERATOR_TYPE(leaf_page_node->GetPageId(), buffer_pool_manager_, 0);
-
-  page->RUnlatch();
-  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
-
-  return itr;
+  return INDEXITERATOR_TYPE(leaf_page_node, buffer_pool_manager_, 0);
 }
 
 /*
@@ -639,16 +632,7 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
     throw Exception(ExceptionType::INVALID, "begin");
   }
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
-  auto itr = INDEXITERATOR_TYPE(leaf_page_node->GetPageId(), buffer_pool_manager_, 0);
-
-  page->RUnlatch();
-  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
-
-  while (comparator_((*itr).first, key) != 0) {
-    ++itr;
-  }
-
-  return itr;
+  return INDEXITERATOR_TYPE(leaf_page_node, buffer_pool_manager_, leaf_page_node->KeyIndex(key, comparator_));
 }
 
 /*
@@ -657,7 +641,7 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(INVALID_PAGE_ID, buffer_pool_manager_, 0); }
+INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(nullptr, buffer_pool_manager_, -1); }
 
 /*****************************************************************************
  * UTILITIES AND DEBUG
@@ -930,12 +914,12 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
 
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::isSafe(WType op, BPlusTreePage *node) {
-  // if (op == WType::INSERT && node->GetSize() < node->GetMaxSize() - 1) {
-  //  return true;
-  //}
-  // if (op == WType::DELETE && node->GetSize() > node->GetMinSize() + 1) {  // or node->GetMinSize() + 1
-  //  return true;
-  //}
+  if (op == WType::INSERT && node->GetSize() < node->GetMaxSize() - 1) {
+    return true;
+  }
+  if (op == WType::DELETE && node->GetSize() > node->GetMinSize() + 1) {  // or node->GetMinSize() + 1
+    return true;
+  }
   return false;
 }
 
