@@ -174,7 +174,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 
   // if full, split leaf node - now parent latch must been held
   if (new_size >= leaf_page_node->GetMaxSize()) {
-    LeafPage *new_leaf_page_node = Split(leaf_page_node);
+    LeafPage *new_leaf_page_node = Split(leaf_page_node, transaction);
 
     auto partition_key = new_leaf_page_node->KeyAt(0);  // partition key
 
@@ -182,7 +182,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
     InsertIntoParent(leaf_page_node, partition_key, new_leaf_page_node, transaction);
 
     // mark dirty
-    buffer_pool_manager_->UnpinPage(new_leaf_page_node->GetPageId(), true);
+    // buffer_pool_manager_->UnpinPage(new_leaf_page_node->GetPageId(), true);
   }
 
   // done using; mark dirty;
@@ -197,10 +197,12 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 /*WHen this is called, its left and parent have latch, so it is safe not to hold latch*/
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
-N *BPLUSTREE_TYPE::Split(N *node) {
+N *BPLUSTREE_TYPE::Split(N *node, Transaction *transaction) {
   // new page
   page_id_t page_id;
   auto *page = new_page(&page_id);
+  page->WLatch();
+  transaction->AddIntoPageSet(page);
 
   // init new nodes
   N *new_page_node = reinterpret_cast<N *>(page->GetData());
@@ -294,10 +296,10 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
 
   // recursive check
   if (new_size >= parent_page_node->GetMaxSize()) {
-    auto *new_parent_page_node = Split(parent_page_node);
+    auto *new_parent_page_node = Split(parent_page_node, transaction);
     auto partition_key = new_parent_page_node->KeyAt(0);  // partition key
     InsertIntoParent(parent_page_node, partition_key, new_parent_page_node, transaction);
-    buffer_pool_manager_->UnpinPage(new_parent_page_node->GetPageId(), true);
+    // buffer_pool_manager_->UnpinPage(new_parent_page_node->GetPageId(), true);
   }
   // close - mark dirty
   buffer_pool_manager_->UnpinPage(parent_page_node->GetPageId(), true);
