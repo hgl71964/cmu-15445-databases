@@ -402,16 +402,16 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
     // del
     if (parent_should_del) {  // need to del parent page here
-      LOG_DEBUG("addintodeletedpageset - parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(),
-                sibling_node->GetPageId(), node->GetPageId());
-      LOG_DEBUG("parent pin: %d - sibling pin: %d", parent_page->GetPinCount(), sibling_page->GetPinCount());
-      LOG_DEBUG("root_id: %d - virtual_root_id: %d", root_page_id_, virtual_root_id_);
-      LOG_DEBUG("cur_index: %d", cur_index);
-      LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
-      for (auto &i : *(transaction->GetPageSet())) {
-        auto *tmp_n = reinterpret_cast<BPlusTreePage *>(i->GetData());
-        LOG_ERROR("check %d %d", tmp_n->GetPageId(), i->GetPageId());
-      }
+      // LOG_DEBUG("addintodeletedpageset - parent_id: %d - sibling_id: %d, node_id: %d", parent_node->GetPageId(),
+      //          sibling_node->GetPageId(), node->GetPageId());
+      // LOG_DEBUG("parent pin: %d - sibling pin: %d", parent_page->GetPinCount(), sibling_page->GetPinCount());
+      // LOG_DEBUG("root_id: %d - virtual_root_id: %d", root_page_id_, virtual_root_id_);
+      // LOG_DEBUG("cur_index: %d", cur_index);
+      // LOG_DEBUG("my parent id: %d, isLeaf: %d", node->GetParentPageId(), node->IsLeafPage());
+      // for (auto &i : *(transaction->GetPageSet())) {
+      //  auto *tmp_n = reinterpret_cast<BPlusTreePage *>(i->GetData());
+      //  LOG_ERROR("check %d %d", tmp_n->GetPageId(), i->GetPageId());
+      //}
       transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
     }
     if (cur_index == 0) {  // depending on cur_index - either sibling or me need to del
