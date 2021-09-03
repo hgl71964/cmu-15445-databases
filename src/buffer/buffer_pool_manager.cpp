@@ -55,7 +55,7 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
-  gc();
+  //gc();
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
@@ -121,7 +121,7 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
   std::scoped_lock<std::mutex> lock(latch_);
 
-  gc();
+  //gc();
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
@@ -165,7 +165,7 @@ bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
   std::scoped_lock<std::mutex> lock(latch_);
 
-  gc();
+  //gc();
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
@@ -206,7 +206,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
-  gc();
+  //gc();
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
@@ -271,8 +271,8 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
-  gc();
-  LOG_INFO("%d", page_id);
+  //gc();
+  //LOG_INFO("%d", page_id);
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
@@ -344,7 +344,7 @@ void BufferPoolManager::FlushAllPagesImpl() {
   // You can do it!
 
   std::scoped_lock<std::mutex> lock(latch_);
-  gc();
+  //gc();
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
