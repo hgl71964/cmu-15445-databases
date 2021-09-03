@@ -463,6 +463,7 @@ void BufferPoolManager::init_gc() {
                   pages_[frame_id].GetPinCount());
         Reset_meta_dataL(frame_id);
         page_table_.erase(pid);
+        free_list_.push_back(frame_id);
       } else {
         LOG_ERROR("init_gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
                   pages_[frame_id].GetPinCount());
@@ -479,6 +480,7 @@ void BufferPoolManager::gc() {
         LOG_ERROR("gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
         Reset_meta_dataL(frame_id);
         page_table_.erase(pid);
+        free_list_.push_back(frame_id);
       } else {
         LOG_ERROR("gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
       }
