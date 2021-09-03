@@ -184,6 +184,8 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 
     auto partition_key = new_leaf_page_node->KeyAt(0);  // partition key
 
+    LOG_INFO("%d %d", leaf_page_node->GetPageId(), new_leaf_page_node->GetPageId());
+
     // recursively insert parent
     InsertIntoParent(leaf_page_node, partition_key, new_leaf_page_node, transaction);
 
@@ -220,7 +222,9 @@ N *BPLUSTREE_TYPE::Split(N *node, Transaction *transaction) {
 
     // move key & val pairs
     tmp->MoveHalfTo(tmp_n);
+    auto pid = tmp->GetNextPageId();
     tmp->SetNextPageId(tmp_n->GetPageId());
+    tmp_n->SetNextPageId(pid);
   } else {
     auto *tmp_n = reinterpret_cast<InternalPage *>(new_page_node);
     auto *tmp = reinterpret_cast<InternalPage *>(node);
@@ -296,6 +300,8 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   auto parent_id = old_node->GetParentPageId();
   auto *page = fetch_page(parent_id);  // latch is hold
   auto *parent_page_node = reinterpret_cast<InternalPage *>(page->GetData());
+
+  LOG_INFO("%d %d %d", old_node->GetPageId(), new_node->GetPageId(), parent_id);
 
   // insert into parent, adopt
   auto new_size = parent_page_node->InsertNodeAfter(old_node->GetPageId(), key, new_node->GetPageId());

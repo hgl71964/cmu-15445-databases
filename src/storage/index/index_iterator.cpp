@@ -4,6 +4,7 @@
 #include <cassert>
 
 #include "storage/index/index_iterator.h"
+#include "common/logger.h"
 
 namespace bustub {
 
@@ -30,7 +31,7 @@ INDEXITERATOR_TYPE::~IndexIterator() {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-bool INDEXITERATOR_TYPE::isEnd() { return leaf_ == nullptr; }
+bool INDEXITERATOR_TYPE::isEnd() { return leaf_ == nullptr && index_ == -1; }
 
 INDEX_TEMPLATE_ARGUMENTS
 const MappingType &INDEXITERATOR_TYPE::operator*() {
@@ -46,6 +47,7 @@ INDEXITERATOR_TYPE &INDEXITERATOR_TYPE::operator++() {
     throw Exception(ExceptionType::INVALID, "iterator *");
   }
 
+  //LOG_INFO("%d %d %d", leaf_->GetPageId(), leaf_->GetSize(),index_);
   index_++;
   if (index_ >= leaf_->GetSize()) {
     auto next_pid = leaf_->GetNextPageId();
@@ -55,6 +57,7 @@ INDEXITERATOR_TYPE &INDEXITERATOR_TYPE::operator++() {
 
     if (next_pid == INVALID_PAGE_ID) {
       leaf_ = nullptr;
+      index_ = -1;
     } else {
       auto *page = buffer_pool_manager_->FetchPage(next_pid);
       page->RLatch();
