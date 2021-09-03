@@ -35,6 +35,7 @@ class BufferPoolManager {
   void check();
   void info();
   void gc();
+  void init_gc();
 
   /**
    * Creates a new BufferPoolManager.

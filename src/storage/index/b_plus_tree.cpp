@@ -39,7 +39,9 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
   root_node->Init(virtual_root_id_, INVALID_PAGE_ID, 0);
   buffer_pool_manager_->UnpinPage(virtual_root_id_, true);
 
-  buffer_pool_manager_->gc();
+  // clean bpm
+  buffer_pool_manager_->init_gc();
+
   if (b_debug_msg) {
     LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
     LOG_DEBUG("virtual root id: %d", virtual_root_id_);

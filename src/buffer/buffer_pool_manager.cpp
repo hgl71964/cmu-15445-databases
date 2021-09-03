@@ -453,6 +453,23 @@ void BufferPoolManager::check() {
     }
   }
 }
+void BufferPoolManager::init_gc() {
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      if (pages_[frame_id].GetPinCount() == 0) {
+        LOG_ERROR("init_gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
+                  pages_[frame_id].GetPinCount());
+        Reset_meta_dataL(frame_id);
+        page_table_.erase(pid);
+      } else {
+        LOG_ERROR("init_gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
+                  pages_[frame_id].GetPinCount());
+      }
+    }
+  }
+}
 void BufferPoolManager::gc() {
   for (auto &it : page_table_) {
     auto pid = it.first;
