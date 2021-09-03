@@ -200,10 +200,8 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyNFrom(MappingType *items, int size, Buf
     // adopt
     auto page_id = array[i].second;
     auto *child_page = buffer_pool_manager->FetchPage(page_id);
-    // child_page->WLatch();
     BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *>(child_page->GetData());
     b_plus_child_page->SetParentPageId(BPlusTreePage::GetPageId());
-    // child_page->WUnlatch();
     buffer_pool_manager->UnpinPage(b_plus_child_page->GetPageId(), true);  // mark dirty
   }
 
@@ -273,10 +271,8 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(BPlusTreeInternalPage *recipient,
     // adopt
     auto page_id = array[i].second;
     auto *child_page = buffer_pool_manager->FetchPage(page_id);
-    child_page->WLatch();
     BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *>(child_page->GetData());
     b_plus_child_page->SetParentPageId(recipient->GetPageId());
-    child_page->WUnlatch();
     buffer_pool_manager->UnpinPage(b_plus_child_page->GetPageId(), true);  // mark dirty
   }
 
@@ -323,10 +319,8 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyLastFrom(const MappingType &pair, Buffe
   // adopt
   auto page_id = array[size].second;
   auto *child_page = buffer_pool_manager->FetchPage(page_id);
-  child_page->WLatch();
   BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *>(child_page->GetData());
   b_plus_child_page->SetParentPageId(BPlusTreePage::GetPageId());
-  child_page->WUnlatch();
   buffer_pool_manager->UnpinPage(b_plus_child_page->GetPageId(), true);  // mark dirty
 }
 
@@ -364,10 +358,8 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyFirstFrom(const MappingType &pair, Buff
   // adopt
   auto page_id = array[0].second;
   auto *child_page = buffer_pool_manager->FetchPage(page_id);
-  child_page->WLatch();
   BPlusTreePage *b_plus_child_page = reinterpret_cast<BPlusTreePage *>(child_page->GetData());
   b_plus_child_page->SetParentPageId(BPlusTreePage::GetPageId());
-  child_page->WUnlatch();
   buffer_pool_manager->UnpinPage(b_plus_child_page->GetPageId(), true);  // mark dirty
 }
 
