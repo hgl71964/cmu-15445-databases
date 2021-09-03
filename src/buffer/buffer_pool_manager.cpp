@@ -78,6 +78,8 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 
   // if all pinned, cannot find replacement
   if (is_all_pin()) {
+    LOG_INFO("all pin");
+    LOG_ERROR("all pin %ld - %ld", pool_size_, page_table_.size());
     return nullptr;
   }
 
@@ -173,6 +175,7 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
     auto frame_id = it.second;
     if (pages_[frame_id].GetPageId() != pid) {
       LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+      LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size());
       throw Exception(ExceptionType::INVALID, "bpm check");
     }
   }
@@ -242,6 +245,8 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   // 1.
   if (is_all_pin()) {
+    LOG_INFO("all pin");
+    LOG_ERROR("all pin %ld - %ld", pool_size_, page_table_.size());
     return nullptr;
   }
 
@@ -340,8 +345,6 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
       LOG_DEBUG("%d - size %ld", pid, page_table_.size());
     }
   }
-
-  // LOG_INFO("bpm - update %d - %d", page_id, free_frame_id);
 
   // reset meta data, flush if dirty
   if (pages_[free_frame_id].is_dirty_) {
