@@ -359,20 +359,25 @@ TEST(BPlusTreeConcurrentTest, MixTest2) {
     LaunchParallelTest(10, InsertHelper, &tree, keys);
     std::cout << "insert" << j << std::endl;
 
-    // GenericKey<8> index_key;
-    // int64_t start_key = 2;
-    // int64_t size = 0;
-    // index_key.SetFromInteger(start_key);
-    // for (auto iterator = tree.Begin(index_key); iterator != tree.end(); ++iterator) {
-    //  size = size + 1;
-    //}
-    // EXPECT_EQ(size, 998);
-    // std::cout << "itr" << j << std::endl;
+    GenericKey<8> index_key;
+    int64_t start_key = 2;
+    int64_t size = 0;
+    index_key.SetFromInteger(start_key);
+    for (auto iterator = tree.Begin(index_key); iterator != tree.end(); ++iterator) {
+      size = size + 1;
+    }
+    EXPECT_EQ(size, 998);
+    std::cout << "itr" << j << std::endl;
 
     // concurrent delete
     std::vector<int64_t> remove_keys{};
-    for (int64_t key = 20; key < scale_factor; key++) {
-      remove_keys.push_back(key);
+    // for (int64_t key = 20; key < scale_factor; key++) {
+    //  remove_keys.push_back(key);
+    //}
+    for (auto &k : keys) {
+      if (k % 13 != 1) {
+        remove_keys.push_back(k);
+      }
     }
     std::cout << remove_keys.size() << std::endl;
     LaunchParallelTest(10, DeleteHelper, &tree, remove_keys);
