@@ -79,7 +79,7 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   // if all pinned, cannot find replacement
   if (is_all_pin()) {
     LOG_INFO("all pin");
-    LOG_ERROR("all pin %ld - %ld", pool_size_, page_table_.size());
+    LOG_INFO("all pin %ld - %ld", pool_size_, page_table_.size());
     return nullptr;
   }
 
@@ -246,7 +246,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // 1.
   if (is_all_pin()) {
     LOG_INFO("all pin");
-    LOG_ERROR("all pin %ld - %ld", pool_size_, page_table_.size());
+    LOG_INFO("all pin %ld - %ld", pool_size_, page_table_.size());
     return nullptr;
   }
 
