@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <list>
 #include <unordered_map>
+#include <vector>
 #include "common/config.h"
 #include "common/exception.h"
 #include "common/logger.h"
@@ -53,7 +54,7 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
-  // gc();
+  gc();
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
@@ -229,7 +230,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
-  // gc();
+  gc();
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
@@ -472,19 +473,24 @@ void BufferPoolManager::init_gc() {
   }
 }
 void BufferPoolManager::gc() {
+  std::vector<page_id_t> vec;
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
     if (pages_[frame_id].GetPageId() != pid) {
       if (pages_[frame_id].GetPinCount() == 0) {
         LOG_ERROR("gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
-        Reset_meta_dataL(frame_id);
-        page_table_.erase(pid);
-        free_list_.push_back(frame_id);
+        vec.push_back(pid);
       } else {
         LOG_ERROR("gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+        LOG_ERROR("gc not ok");
       }
     }
+  }
+  for (auto &i : vec) {
+    LOG_ERROR("gc del %ld", page_table_.size());
+    page_table_.erase(i);
+    LOG_ERROR("gc del %ld", page_table_.size());
   }
 }
 

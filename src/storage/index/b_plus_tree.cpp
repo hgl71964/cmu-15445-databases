@@ -657,14 +657,12 @@ Page *BPLUSTREE_TYPE::new_page(page_id_t *pid) {
   if (page == nullptr) {
     LOG_DEBUG("%d %d", virtual_root_id_, root_page_id_);
     {
-      Page *page;
-      BPlusTreePage *page_node;
-
-      page = buffer_pool_manager_->FetchPage(root_page_id_);
-      page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+      auto *p = buffer_pool_manager_->FetchPage(root_page_id_);
+      auto *page_node = reinterpret_cast<BPlusTreePage *>(p->GetData());
       ToString(page_node, buffer_pool_manager_);
     }
     throw Exception(ExceptionType::INVALID, "new page");
+    LOG_DEBUG("no throw?");
   }
   if (page->GetPageId() != *pid) {
     LOG_DEBUG("new_page %d - %d", *pid, page->GetPageId());
