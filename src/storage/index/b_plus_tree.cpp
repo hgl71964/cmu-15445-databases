@@ -343,7 +343,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   release_N_unPin(page, transaction, true);  // page, ancestor dirty - del will be addressed
   if (should_delete) {
     buffer_pool_manager_->DeletePage(leaf_page_node->GetPageId());
-    //buffer_pool_manager_->info();
+    // buffer_pool_manager_->info();
   }
   mu_.unlock();
 }
@@ -415,7 +415,8 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
       transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
     }
     if (cur_index == 0) {  // depending on cur_index - either sibling or me need to del
-      //LOG_DEBUG("del sibling id: %d - pin_count: %d - index %d", sibling_node->GetPageId(), sibling_page->GetPinCount(),
+      // LOG_DEBUG("del sibling id: %d - pin_count: %d - index %d", sibling_node->GetPageId(),
+      // sibling_page->GetPinCount(),
       //          cur_index);
       transaction->AddIntoDeletedPageSet(sibling_node->GetPageId());
     }
@@ -948,9 +949,9 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
       //  auto *tmp_n = reinterpret_cast<BPlusTreePage *>(i->GetData());
       //  LOG_ERROR("delset - check %d %d", tmp_n->GetPageId(), i->GetPageId());
       //}
-      //LOG_DEBUG("delset - %d ", pid);
+      // LOG_DEBUG("delset - %d ", pid);
       buffer_pool_manager_->DeletePage(pid);
-      //buffer_pool_manager_->info();
+      // buffer_pool_manager_->info();
       transaction->GetDeletedPageSet()->erase(pid);
     }
     // notice this clears elem in transaction - because page_set is a pointer
