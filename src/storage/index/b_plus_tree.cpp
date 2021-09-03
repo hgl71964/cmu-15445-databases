@@ -1165,9 +1165,9 @@ void BPLUSTREE_TYPE::ToGraph(BPlusTreePage *page, BufferPoolManager *bpm, std::o
   bpm->UnpinPage(page->GetPageId(), false);
 }
 INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::Print()  {
+void BPLUSTREE_TYPE::Print() {
   auto *page = fetch_page(root_page_id_);
-  auto *tmp = reinterpret_cast<BPlusTreePage *> (page->GetData());
+  auto *tmp = reinterpret_cast<BPlusTreePage *>(page->GetData());
   ToString(tmp, buffer_pool_manager_);
   buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
 }
