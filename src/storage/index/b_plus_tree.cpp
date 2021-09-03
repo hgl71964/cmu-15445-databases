@@ -610,8 +610,8 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
   KeyType k;
   auto *page = READ_FindLeafPage(k, true);
   if (page == nullptr) {
-    LOG_DEBUG("begin");
-    throw Exception(ExceptionType::INVALID, "begin");
+    mu_.unlock();
+    return INDEXITERATOR_TYPE(nullptr, buffer_pool_manager_, -1);
   }
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
   mu_.unlock();
@@ -630,8 +630,8 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
 
   auto *page = READ_FindLeafPage(key, false);
   if (page == nullptr) {
-    LOG_DEBUG("begin");
-    throw Exception(ExceptionType::INVALID, "begin");
+    mu_.unlock();
+    return INDEXITERATOR_TYPE(nullptr, buffer_pool_manager_, -1);
   }
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
   mu_.unlock();
@@ -1156,10 +1156,14 @@ void BPLUSTREE_TYPE::ToGraph(BPlusTreePage *page, BufferPoolManager *bpm, std::o
 }
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Print() {
-  auto *page = fetch_page(root_page_id_);
-  auto *tmp = reinterpret_cast<BPlusTreePage *>(page->GetData());
-  ToString(tmp, buffer_pool_manager_);
-  buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+  if (root_page_id_ != INVALID_PAGE_ID) {
+    auto *page = fetch_page(root_page_id_);
+    auto *tmp = reinterpret_cast<BPlusTreePage *>(page->GetData());
+    ToString(tmp, buffer_pool_manager_);
+    buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+  } else {
+    LOG_INFO("empty page");
+  }
 }
 
 /**
