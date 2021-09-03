@@ -39,6 +39,7 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
   root_node->Init(virtual_root_id_, INVALID_PAGE_ID, 0);
   buffer_pool_manager_->UnpinPage(virtual_root_id_, true);
 
+  buffer_pool_manager_->gc();
   if (b_debug_msg) {
     LOG_DEBUG("internal max cap: %d - leaf max cap: %d", internal_max_size_, leaf_max_size_);
     LOG_DEBUG("virtual root id: %d", virtual_root_id_);
@@ -653,7 +654,16 @@ INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::new_page(page_id_t *pid) {
   auto *page = buffer_pool_manager_->NewPage(pid);
   if (page == nullptr) {
-    throw Exception(ExceptionType::OUT_OF_MEMORY, "out of mem");
+    LOG_DEBUG("%d %d", virtual_root_id_, root_page_id_);
+    {
+      Page *page;
+      BPlusTreePage *page_node;
+
+      page = buffer_pool_manager_->FetchPage(root_page_id_);
+      page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+      ToString(page_node, buffer_pool_manager_);
+    }
+    throw Exception(ExceptionType::INVALID, "new page");
   }
   if (page->GetPageId() != *pid) {
     LOG_DEBUG("new_page %d - %d", *pid, page->GetPageId());

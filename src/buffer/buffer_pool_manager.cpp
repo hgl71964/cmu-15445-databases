@@ -236,7 +236,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
     if (pages_[frame_id].GetPageId() != pid) {
       LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
       LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size());
-      throw Exception(ExceptionType::INVALID, "bpm check");
+      return nullptr;
     }
   }
 
@@ -459,6 +459,7 @@ void BufferPoolManager::gc() {
     auto frame_id = it.second;
     if (pages_[frame_id].GetPageId() != pid) {
       if (pages_[frame_id].GetPinCount() == 0) {
+        LOG_ERROR("gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
         Reset_meta_dataL(frame_id);
         page_table_.erase(pid);
       } else {
