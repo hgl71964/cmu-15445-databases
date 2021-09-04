@@ -178,9 +178,6 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 
     // recursively insert parent
     InsertIntoParent(leaf_page_node, partition_key, new_leaf_page_node, transaction);
-
-    // mark dirty
-    // buffer_pool_manager_->UnpinPage(new_leaf_page_node->GetPageId(), true);
   }
 
   // done using; mark dirty;
