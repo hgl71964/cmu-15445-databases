@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/buffer_pool_manager.h"
+#include "storage/page/b_plus_tree_page.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -69,17 +70,19 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   if (page_table_.find(page_id) != page_table_.end()) {
     frame_id_t frame_id = page_table_[page_id];
 
-    if (pages_[frame_id].GetPageId() != page_id) {
-      LOG_ERROR("FetchPageImpl fatal - %d - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(),
-                page_id, pages_[frame_id].GetPinCount());
-      // auto pid = page_id;
-      // page_table_.erase(pid);
-      throw Exception(ExceptionType::INVALID, "bpm check");
-    }
-    replacer_->Pin(frame_id);
-    pages_[frame_id].pin_count_ += 1;
+    if (pages_[frame_id].GetPageId() == page_id) {
+      replacer_->Pin(frame_id);
+      pages_[frame_id].pin_count_ += 1;
 
-    return &pages_[frame_id];
+      return &pages_[frame_id];
+    }
+
+    // TODO - gc this page and proceed as if it does not find
+    LOG_ERROR("FetchPageImpl fatal - %d - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(),
+              page_id, pages_[frame_id].GetPinCount());
+    // auto pid = page_id;
+    // page_table_.erase(pid);
+    throw Exception(ExceptionType::INVALID, "bpm check");
   }
 
   // if all pinned, cannot find replacement
@@ -263,14 +266,19 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   std::scoped_lock<std::mutex> lock(latch_);
 
   // gc();
-  // for (auto &it : page_table_) {
-  //  auto pid = it.first;
-  //  auto frame_id = it.second;
-  //  if (pages_[frame_id].GetPageId() != pid) {
-  //    LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //    pages_[frame_id].GetPinCount()); LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size()); return nullptr;
-  //  }
-  //}
+  for (auto &it : page_table_) {
+    auto pid = it.first;
+    auto frame_id = it.second;
+    if (pages_[frame_id].GetPageId() != pid) {
+      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
+      LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size());
+      BPlusTreePage *node = reinterpret_cast<BPlusTreePage *>(pages_[frame_id].GetData());
+
+      LOG_ERROR("double check %d - %d - %d - %d", node->GetPageId(), node->GetParentPageId(), node->IsLeafPage(),
+                node->GetSize());
+      // throw Exception(ExceptionType::INVALID, "bpm check");
+    }
+  }
 
   // 0.
   page_id_t new_page_id = disk_manager_->AllocatePage();

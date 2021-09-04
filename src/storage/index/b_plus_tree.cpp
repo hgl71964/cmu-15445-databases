@@ -382,7 +382,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
     }
 
     // maybe recursion within callee
-    bool parent_should_del = Coalesce(&sibling_node, &node, &parent_node, cur_index, transaction);
+    bool parent_should_del = Coalesce(sibling_node, node, parent_node, cur_index, transaction);
 
     // del
     if (parent_should_del) {  // need to del parent page here
@@ -409,45 +409,47 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
-bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
-                              BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> **parent, int index,
+bool BPLUSTREE_TYPE::Coalesce(N *neighbor_node, N *node,
+                              BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *parent, int index,
                               Transaction *transaction) {
-  auto isLeaf = (*node)->IsLeafPage();
+  BPlusTreePage *p = reinterpret_cast<BPlusTreePage *>(node);
+  BPlusTreePage *p_n = reinterpret_cast<BPlusTreePage *>(neighbor_node);
+  auto isLeaf = p->IsLeafPage();
   if (isLeaf) {
     // resolve leaf type
     //
-    auto *tmp_n = reinterpret_cast<LeafPage *>(*neighbor_node);
-    auto *tmp = reinterpret_cast<LeafPage *>(*node);
+    LeafPage *tmp_n = reinterpret_cast<LeafPage *>(p_n);
+    LeafPage *tmp = reinterpret_cast<LeafPage *>(p);
 
     // merge
     if (index == 0) {
       tmp_n->MoveAllTo(tmp);  // from sibling -> node
-      (*parent)->Remove(1);   // inform parent
+      parent->Remove(1);      // inform parent
     } else {
-      tmp->MoveAllTo(tmp_n);     // from node -> sibling
-      (*parent)->Remove(index);  // inform parent
+      tmp->MoveAllTo(tmp_n);  // from node -> sibling
+      parent->Remove(index);  // inform parent
     }
   } else {
     // resolve internal page type
     //
-    auto *tmp_n = reinterpret_cast<InternalPage *>(*neighbor_node);
-    auto *tmp = reinterpret_cast<InternalPage *>(*node);
+    InternalPage *tmp_n = reinterpret_cast<InternalPage *>(p_n);
+    InternalPage *tmp = reinterpret_cast<InternalPage *>(p);
 
     // merge
     if (index == 0) {
-      auto middle_key = (*parent)->KeyAt(1);
+      auto middle_key = parent->KeyAt(1);
       tmp_n->MoveAllTo(tmp, middle_key, buffer_pool_manager_);  // from sibling -> node
-      (*parent)->Remove(1);                                     // inform parent
+      parent->Remove(1);                                        // inform parent
     } else {
-      auto middle_key = (*parent)->KeyAt(index);
+      auto middle_key = parent->KeyAt(index);
       tmp->MoveAllTo(tmp_n, middle_key, buffer_pool_manager_);  // from node -> sibling
-      (*parent)->Remove(index);                                 // inform parent
+      parent->Remove(index);                                    // inform parent
     }
   }
 
   // recursively check parent - now parent is 'leaf'
-  if ((*parent)->GetSize() < (*parent)->GetMinSize()) {
-    return CoalesceOrRedistribute(*parent, transaction);
+  if (parent->GetSize() < parent->GetMinSize()) {
+    return CoalesceOrRedistribute(parent, transaction);
   }
   return false;  // if parent is fine, then do not delete parent
 }
@@ -467,39 +469,42 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
   // get parent
   auto *parent_page = fetch_page(node->GetParentPageId());
   auto *parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
+  // close - because parent must in transaction
+  buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
 
-  bool isLeaf = node->IsLeafPage();
+  BPlusTreePage *p = reinterpret_cast<BPlusTreePage *>(node);
+  BPlusTreePage *p_n = reinterpret_cast<BPlusTreePage *>(neighbor_node);
+
+  bool isLeaf = p->IsLeafPage();
   if (isLeaf) {
     // resolve leaf type
     //
-    auto *tmp_n = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(neighbor_node);
-    auto *tmp = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(node);
+    LeafPage *tmp_n = reinterpret_cast<LeafPage *>(p_n);
+    LeafPage *tmp = reinterpret_cast<LeafPage *>(p);
 
     if (index == 0) {  // neighbor at my right
-      parent_node->SetKeyAt(1, neighbor_node->KeyAt(1));
+      parent_node->SetKeyAt(1, tmp_n->KeyAt(1));
       tmp_n->MoveFirstToEndOf(tmp);
     } else {
-      parent_node->SetKeyAt(index, neighbor_node->KeyAt(neighbor_node->GetSize() - 1));
+      parent_node->SetKeyAt(index, tmp_n->KeyAt(tmp_n->GetSize() - 1));
       tmp_n->MoveLastToFrontOf(tmp);
     }
   } else {
     // resolve internal page type
     //
-    auto *tmp_n = reinterpret_cast<InternalPage *>(neighbor_node);
-    auto *tmp = reinterpret_cast<InternalPage *>(node);
+    InternalPage *tmp_n = reinterpret_cast<InternalPage *>(p_n);
+    InternalPage *tmp = reinterpret_cast<InternalPage *>(p);
 
     if (index == 0) {
       auto middle_key = parent_node->KeyAt(1);
-      parent_node->SetKeyAt(1, neighbor_node->KeyAt(1));
+      parent_node->SetKeyAt(1, tmp_n->KeyAt(1));
       tmp_n->MoveFirstToEndOf(tmp, middle_key, buffer_pool_manager_);
     } else {
       auto middle_key = parent_node->KeyAt(index);
-      parent_node->SetKeyAt(index, neighbor_node->KeyAt(neighbor_node->GetSize() - 1));
+      parent_node->SetKeyAt(index, tmp_n->KeyAt(tmp_n->GetSize() - 1));
       tmp_n->MoveLastToFrontOf(tmp, middle_key, buffer_pool_manager_);
     }
   }
-  // parent pin - 1, because we open again in this function
-  buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
 }
 /*
  * Update root page if necessary
@@ -533,7 +538,7 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   auto *tmp_old = reinterpret_cast<InternalPage *>(old_root_node);
   page_id_t val = tmp_old->RemoveAndReturnOnlyChild();
 
-  LOG_DEBUG("switch from: %d - to: %d", root_page_id_, val);
+  // LOG_DEBUG("switch from: %d - to: %d", root_page_id_, val);
 
   // switch root to its only child
   auto *page = fetch_page(val);
@@ -834,12 +839,12 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
 
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::isSafe(WType op, BPlusTreePage *node) {
-  if (op == WType::INSERT && node->GetSize() < node->GetMaxSize() - 1) {
-    return true;
-  }
-  if (op == WType::DELETE && node->GetSize() > node->GetMinSize()) {  // or node->GetMinSize() + 1
-    return true;
-  }
+  // if (op == WType::INSERT && node->GetSize() < node->GetMaxSize() - 1) {
+  //  return true;
+  //}
+  // if (op == WType::DELETE && node->GetSize() > node->GetMinSize()) {  // or node->GetMinSize() + 1
+  //  return true;
+  //}
   return false;
 }
 
