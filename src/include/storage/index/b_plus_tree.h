@@ -140,7 +140,6 @@ class BPlusTree {
   int internal_max_size_;
 
   // virtual root - used as lock
-  page_id_t virtual_root_id_;
   std::mutex mu_;
 };
 
