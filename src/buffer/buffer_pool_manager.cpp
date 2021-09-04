@@ -70,7 +70,8 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
     frame_id_t frame_id = page_table_[page_id];
 
     if (pages_[frame_id].GetPageId() != page_id) {
-      LOG_ERROR("FetchPageImpl fatal - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(), page_id);
+      LOG_ERROR("FetchPageImpl fatal - %d - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(),
+                page_id, pages_[frame_id].GetPinCount());
       // auto pid = page_id;
       // page_table_.erase(pid);
       throw Exception(ExceptionType::INVALID, "bpm check");
