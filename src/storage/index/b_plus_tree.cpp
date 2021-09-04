@@ -196,6 +196,8 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 N *BPLUSTREE_TYPE::Split(N *node, Transaction *transaction) {
+  BPlusTreePage *p = reinterpret_cast<BPlusTreePage *>(node);
+
   // new page
   page_id_t page_id;
   auto *page = new_page(&page_id);
@@ -203,12 +205,13 @@ N *BPLUSTREE_TYPE::Split(N *node, Transaction *transaction) {
   transaction->AddIntoPageSet(page);
 
   // init new nodes
-  N *new_page_node = reinterpret_cast<N *>(page->GetData());
-  new_page_node->Init(page_id, node->GetParentPageId(), node->GetMaxSize());
+  // N *new_page_node = reinterpret_cast<N *>(page->GetData());
+  // new_page_node->Init(page_id, node->GetParentPageId(), node->GetMaxSize());
 
-  if (node->IsLeafPage()) {
-    auto *tmp_n = reinterpret_cast<LeafPage *>(new_page_node);
-    auto *tmp = reinterpret_cast<LeafPage *>(node);
+  if (p->IsLeafPage()) {
+    LeafPage *tmp_n = reinterpret_cast<LeafPage *>(page->GetData());
+    LeafPage *tmp = reinterpret_cast<LeafPage *>(p);
+    tmp_n->Init(page_id, p->GetParentPageId(), p->GetMaxSize());
 
     // move key & val pairs
     tmp->MoveHalfTo(tmp_n);
@@ -216,15 +219,16 @@ N *BPLUSTREE_TYPE::Split(N *node, Transaction *transaction) {
     tmp->SetNextPageId(tmp_n->GetPageId());
     tmp_n->SetNextPageId(pid);
   } else {
-    auto *tmp_n = reinterpret_cast<InternalPage *>(new_page_node);
-    auto *tmp = reinterpret_cast<InternalPage *>(node);
+    InternalPage *tmp_n = reinterpret_cast<InternalPage *>(page->GetData());
+    InternalPage *tmp = reinterpret_cast<InternalPage *>(p);
+    tmp_n->Init(page_id, p->GetParentPageId(), p->GetMaxSize());
 
     // move key & val pairs
     tmp->MoveHalfTo(tmp_n, buffer_pool_manager_);
   }
 
   // new page wull be used by caller, dont Unpin
-  return new_page_node;
+  return reinterpret_cast<N *>(page->GetData());
 }
 
 /*
@@ -266,6 +270,9 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   auto *page = fetch_page(parent_id);  // latch is hold
   auto *parent_page_node = reinterpret_cast<InternalPage *>(page->GetData());
 
+  // close - mark dirty - parent must in transactions
+  buffer_pool_manager_->UnpinPage(parent_page_node->GetPageId(), true);
+
   // insert into parent, adopt
   auto new_size = parent_page_node->InsertNodeAfter(old_node->GetPageId(), key, new_node->GetPageId());
 
@@ -274,10 +281,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
     auto *new_parent_page_node = Split(parent_page_node, transaction);
     auto partition_key = new_parent_page_node->KeyAt(0);  // partition key
     InsertIntoParent(parent_page_node, partition_key, new_parent_page_node, transaction);
-    // buffer_pool_manager_->UnpinPage(new_parent_page_node->GetPageId(), true);
   }
-  // close - mark dirty
-  buffer_pool_manager_->UnpinPage(parent_page_node->GetPageId(), true);
 }
 
 /*****************************************************************************
