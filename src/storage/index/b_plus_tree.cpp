@@ -79,6 +79,9 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   }
 
   // done using; not dirty
+  if (page->GetPinCount() > 1) {
+    LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
+  }
   page->RUnlatch();
   buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
   mu_.unlock();
@@ -319,8 +322,11 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   // close - and ancestor
   release_N_unPin(page, transaction, true);  // page, ancestor dirty - del will be addressed
   if (should_delete) {
+    if (page->GetPinCount() != 0) {
+      LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
+      throw Exception(ExceptionType::INVALID, "del");
+    }
     buffer_pool_manager_->DeletePage(leaf_page_node->GetPageId());
-    // buffer_pool_manager_->info();
   }
   mu_.unlock();
 }
@@ -684,10 +690,12 @@ Page *BPLUSTREE_TYPE::get_sibling(int index, InternalPage *parent_node) {
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::release_N_unPin(Page *page, Transaction *transaction, bool dirty) {
-  free_ancestor(transaction, dirty);  // ancestor must be dirty, otherwise it won't be in transaction
-  auto *tmp = reinterpret_cast<BPlusTreePage *>(page->GetData());
+  if (page->GetPinCount() > 1) {
+    LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
+  }
   page->WUnlatch();
-  buffer_pool_manager_->UnpinPage(tmp->GetPageId(), dirty);
+  buffer_pool_manager_->UnpinPage(page->GetPageId(), dirty);
+  free_ancestor(transaction, dirty);  // ancestor must be dirty, otherwise it won't be in transaction
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -844,6 +852,11 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
     auto *tmp = reinterpret_cast<BPlusTreePage *>(p->GetData());
     page_id_t pid = tmp->GetPageId();
 
+    if (p->GetPinCount() > 1 || tmp->GetPageId() != p->GetPageId()) {
+      LOG_ERROR("%d - %d - %d - %d", p->GetPageId(), p->GetPinCount(), tmp->GetPageId(), root_page_id_);
+      throw Exception(ExceptionType::INVALID, "del");
+    }
+
     p->WUnlatch();
     buffer_pool_manager_->UnpinPage(pid, ancestor_dirty);
 
@@ -854,6 +867,10 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
       //  LOG_ERROR("delset - check %d %d", tmp_n->GetPageId(), i->GetPageId());
       //}
       // LOG_DEBUG("delset - %d ", pid);
+      if (p->GetPinCount() != 0) {
+        LOG_ERROR("%d - %d - %d", p->GetPageId(), p->GetPinCount(), root_page_id_);
+        throw Exception(ExceptionType::INVALID, "del");
+      }
       buffer_pool_manager_->DeletePage(pid);
       // buffer_pool_manager_->info();
       transaction->GetDeletedPageSet()->erase(pid);
