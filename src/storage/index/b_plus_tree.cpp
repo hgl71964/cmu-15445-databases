@@ -162,7 +162,13 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   ValueType val;
   bool exist = leaf_page_node->Lookup(key, &val, comparator_);
   if (exist) {
-    release_N_unPin(page, transaction, false);  // page, ancestor not dirty
+    // release_N_unPin(page, transaction, false);  // page, ancestor not dirty
+    if (page->GetPinCount() > 1) {
+      LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
+    }
+    page->WUnlatch();
+    buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
+    free_ancestor(transaction, false);  // ancestor must be dirty, otherwise it won't be in transaction
     return false;
   }
 
@@ -181,7 +187,13 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   }
 
   // done using; mark dirty;
-  release_N_unPin(page, transaction, true);  // page, ancestor dirty
+  // release_N_unPin(page, transaction, true);  // page, ancestor dirty
+  if (page->GetPinCount() > 1) {
+    LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
+  }
+  page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
+  free_ancestor(transaction, true);  // ancestor must be dirty, otherwise it won't be in transaction
   return true;
 }
 
@@ -309,7 +321,14 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   int remain_size = leaf_page_node->RemoveAndDeleteRecord(key, comparator_);
   bool has_modify = (original_size != remain_size);
   if (!has_modify) {
-    release_N_unPin(page, transaction, false);  // page, ancestor not dirty - release and free
+    // release_N_unPin(page, transaction, false);  // page, ancestor not dirty - release and free
+    if (page->GetPinCount() > 1) {
+      LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
+    }
+    page->WUnlatch();
+    buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
+    free_ancestor(transaction, false);  // ancestor must be dirty, otherwise it won't be in transaction
+
     mu_.unlock();
     return;
   }
@@ -321,7 +340,14 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   }
 
   // close - and ancestor
-  release_N_unPin(page, transaction, true);  // page, ancestor dirty - del will be addressed
+  // release_N_unPin(page, transaction, true);  // page, ancestor dirty - del will be addressed
+  if (page->GetPinCount() > 1) {
+    LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
+  }
+  page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
+  free_ancestor(transaction, true);  // ancestor must be dirty, otherwise it won't be in transaction
+
   if (should_delete) {
     if (page->GetPinCount() != 0) {
       LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
@@ -620,19 +646,19 @@ Page *BPLUSTREE_TYPE::new_page(page_id_t *pid) {
     throw Exception(ExceptionType::INVALID, "new page");
     LOG_DEBUG("no throw?");
   }
-  if (page->GetPageId() != *pid) {
-    LOG_DEBUG("new_page %d - %d", *pid, page->GetPageId());
-    throw Exception(ExceptionType::INVALID, "new page");
-  }
+  // if (page->GetPageId() != *pid) {
+  //  LOG_DEBUG("new_page %d - %d", *pid, page->GetPageId());
+  //  throw Exception(ExceptionType::INVALID, "new page");
+  //}
   return page;
 }
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::fetch_page(page_id_t pid) {
   auto *page = buffer_pool_manager_->FetchPage(pid);
-  if (page->GetPageId() != pid) {
-    LOG_DEBUG("fetch_page %d - %d", pid, page->GetPageId());
-    throw Exception(ExceptionType::INVALID, "new page");
-  }
+  // if (page->GetPageId() != pid) {
+  //  LOG_DEBUG("fetch_page %d - %d", pid, page->GetPageId());
+  //  throw Exception(ExceptionType::INVALID, "new page");
+  //}
   if (page == nullptr) {
     throw Exception(ExceptionType::OUT_OF_MEMORY, "out of mem");
   }
@@ -719,13 +745,13 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
   BPlusTreePage *page_node;
   page_id_t val;
 
-  page = fetch_page(root_page_id_);
-  page->RLatch();
-  page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
-
   if (IsEmpty()) {
     return nullptr;
   }
+
+  page = fetch_page(root_page_id_);
+  page->RLatch();
+  page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
 
   // if  root and leaf - new tree - return directly
   // if root ok, then recursively search
@@ -858,7 +884,7 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
     auto *tmp = reinterpret_cast<BPlusTreePage *>(p->GetData());
     page_id_t pid = tmp->GetPageId();
 
-    if (p->GetPinCount() > 1 || tmp->GetPageId() != p->GetPageId()) {
+    if (p->GetPinCount() > 1) {
       LOG_ERROR("%d - %d - %d - %d", p->GetPageId(), p->GetPinCount(), tmp->GetPageId(), root_page_id_);
       throw Exception(ExceptionType::INVALID, "del");
     }

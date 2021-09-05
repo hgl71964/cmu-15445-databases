@@ -9,7 +9,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/buffer_pool_manager.h"
-#include "storage/page/b_plus_tree_page.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -20,6 +19,7 @@
 #include "common/config.h"
 #include "common/exception.h"
 #include "common/logger.h"
+#include "storage/page/b_plus_tree_page.h"
 #include "storage/page/page.h"
 
 namespace bustub {
@@ -70,19 +70,27 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   if (page_table_.find(page_id) != page_table_.end()) {
     frame_id_t frame_id = page_table_[page_id];
 
-    if (pages_[frame_id].GetPageId() == page_id) {
-      replacer_->Pin(frame_id);
-      pages_[frame_id].pin_count_ += 1;
-
-      return &pages_[frame_id];
+    if (pages_[frame_id].GetPageId() != page_id) {
+      LOG_ERROR("FetchPageImpl fatal - %d - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(),
+                page_id, pages_[frame_id].GetPinCount());
     }
+    replacer_->Pin(frame_id);
+    pages_[frame_id].pin_count_ += 1;
 
-    // TODO - gc this page and proceed as if it does not find
-    LOG_ERROR("FetchPageImpl fatal - %d - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(),
-              page_id, pages_[frame_id].GetPinCount());
+    return &pages_[frame_id];
+
+    // gc this page and proceed as if it does not find
+    // LOG_ERROR("FetchPageImpl fatal - %d - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(),
+    //          page_id, pages_[frame_id].GetPinCount());
     // auto pid = page_id;
-    // page_table_.erase(pid);
-    throw Exception(ExceptionType::INVALID, "bpm check");
+    // auto fid = page_table_[pid];
+    // if (pages_[fid].GetPinCount() == 0) {
+    //  page_table_.erase(pid);
+    //  Reset_meta_dataL(fid);
+    //  free_list_.push_back(fid);
+    //} else {
+    //  throw Exception(ExceptionType::INVALID, "bpm check");
+    //}
   }
 
   // if all pinned, cannot find replacement
@@ -122,7 +130,7 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   pages_[frame_id].is_dirty_ = false;
   pages_[frame_id].pin_count_ = 1;
   replacer_->Pin(frame_id);
-  disk_manager_->ReadPage(page_id, pages_[frame_id].data_);
+  disk_manager_->ReadPage(page_id, pages_[frame_id].GetData());
 
   if (debug_msg) {
     LOG_INFO("FetchPageImpl - not found - page_id: %d", page_id);
@@ -180,10 +188,10 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
     return false;
   }
 
-  if (pages_[page_table_[page_id]].GetPageId() != page_id) {
-    LOG_ERROR("unpin %d -  %d", page_id, pages_[page_table_[page_id]].GetPageId());
-    return false;
-  }
+  // if (pages_[page_table_[page_id]].GetPageId() != page_id) {
+  //  LOG_ERROR("unpin %d -  %d", page_id, pages_[page_table_[page_id]].GetPageId());
+  //  return false;
+  //}
 
   pages_[page_table_[page_id]].is_dirty_ |= is_dirty;
   pages_[page_table_[page_id]].pin_count_ -= 1;
@@ -265,23 +273,30 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
+  // 0.
+  page_id_t new_page_id = disk_manager_->AllocatePage();
+
   // gc();
   for (auto &it : page_table_) {
     auto pid = it.first;
     auto frame_id = it.second;
+    auto find = false;
     if (pages_[frame_id].GetPageId() != pid) {
+      find = true;
       LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
-      LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size());
+      LOG_ERROR("check %d %ld - %ld", new_page_id, pool_size_, page_table_.size());
       BPlusTreePage *node = reinterpret_cast<BPlusTreePage *>(pages_[frame_id].GetData());
 
       LOG_ERROR("double check %d - %d - %d - %d", node->GetPageId(), node->GetParentPageId(), node->IsLeafPage(),
                 node->GetSize());
+      // auto tmp_pid = node->GetPageId();
+      // pages_[frame_id].page_id_ = tmp_pid;
       // throw Exception(ExceptionType::INVALID, "bpm check");
     }
+    if (find) {
+      info();
+    }
   }
-
-  // 0.
-  page_id_t new_page_id = disk_manager_->AllocatePage();
 
   // 1.
   if (is_all_pin()) {
@@ -440,6 +455,10 @@ void BufferPoolManager::FlushAllPagesImpl() {
 }
 
 bool BufferPoolManager::is_all_pin() {
+  if (!free_list_.empty()) {
+    return false;
+  }
+
   bool all_pin = true;
   for (size_t i = 0; i < pool_size_; i++) {
     if (pages_[i].GetPinCount() < 1) {
