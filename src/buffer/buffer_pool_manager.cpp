@@ -286,15 +286,6 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // 4.
   *page_id = new_page_id;
 
-  // for (auto &it : page_table_) {
-  //  auto pid = it.first;
-  //  auto frame_id = it.second;
-  //  if (pages_[frame_id].GetPageId() != pid) {
-  //    LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //    pages_[frame_id].GetPinCount()); throw Exception(ExceptionType::INVALID, "bpm check");
-  //  }
-  //}
-
   return &pages_[new_frame_id];
 }
 

@@ -100,7 +100,7 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   //  return true;
   //}
   // unlock();
-  check_txns(transaction);
+  // check_txns(transaction);
 
   // 2. insert - ok = no duplicate
   bool ok = InsertIntoLeaf(key, value, transaction);
@@ -277,7 +277,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
-  check_txns(transaction);
+  // check_txns(transaction);
 
   // fetch - page hold WRITE latch -
   ValueType v;
@@ -347,32 +347,27 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   transaction->AddIntoPageSet(sibling_page);
   auto *sibling_node = reinterpret_cast<N *>(sibling_page->GetData());
 
-  /**
-  NOTE: now node, sibling_node, parent_node are open - but node will be closed by caller
-  NOTE: i.e. sibling_node and parent_node will be closed here
-  redist - merge have different unpin strategy
-  **/
-  bool node_should_delete = false;
+  // redist - not del me nor sibling
   if (sibling_node->GetSize() + node->GetSize() > node->GetMaxSize()) {
     // no recursion within callee
     Redistribute(sibling_node, node, cur_index);
+    return false;
+  }
 
+  // Coalesce, aka merge
+  //
+  // either del me or sibling
+  bool node_should_delete = false;
+  if (cur_index == 0) {
+    transaction->AddIntoDeletedPageSet(sibling_node->GetPageId());
   } else {
-    // Coalesce has differnt move policy
-    if (cur_index != 0) {
-      node_should_delete = true;  // sibling <- me; delete me
-    }
-
-    // maybe recursion within callee
-    bool parent_should_del = Coalesce(sibling_node, node, parent_node, cur_index, transaction);
-
-    // del
-    if (parent_should_del) {  // need to del parent page here
-      transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
-    }
-    if (cur_index == 0) {  // depending on cur_index - either sibling or me need to del
-      transaction->AddIntoDeletedPageSet(sibling_node->GetPageId());
-    }
+    node_should_delete = true;  // sibling <- me; delete me
+  }
+  // maybe recursion within callee
+  bool parent_should_del = Coalesce(sibling_node, node, parent_node, cur_index, transaction);
+  // del
+  if (parent_should_del) {  // need to del parent page here
+    transaction->AddIntoDeletedPageSet(parent_node->GetPageId());
   }
   return node_should_delete;
 }
@@ -590,12 +585,7 @@ Page *BPLUSTREE_TYPE::new_page(page_id_t *pid) {
   auto *page = buffer_pool_manager_->NewPage(pid);
   if (page == nullptr) {
     throw Exception(ExceptionType::INVALID, "new page");
-    LOG_DEBUG("no throw?");
   }
-  // if (page->GetPageId() != *pid) {
-  //  LOG_DEBUG("new_page %d - %d", *pid, page->GetPageId());
-  //  throw Exception(ExceptionType::INVALID, "new page");
-  //}
   return page;
 }
 INDEX_TEMPLATE_ARGUMENTS
@@ -773,12 +763,12 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, const ValueType &va
 
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::isSafe(WType op, BPlusTreePage *node) {
-  // if (op == WType::INSERT && node->GetSize() < node->GetMaxSize() - 1) {
-  //  return true;
-  //}
-  // if (op == WType::DELETE && node->GetSize() > node->GetMinSize()) {  // or node->GetMinSize() + 1
-  //  return true;
-  //}
+  if (op == WType::INSERT && node->GetSize() < node->GetMaxSize() - 1) {
+    return true;
+  }
+  if (op == WType::DELETE && node->GetSize() > node->GetMinSize()) {  // or node->GetMinSize() + 1
+    return true;
+  }
   return false;
 }
 
