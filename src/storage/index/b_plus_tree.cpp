@@ -60,11 +60,8 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   //  page_node = reinterpret_cast<BPlusTreePage *> (page->GetData());
   //  ToString(page_node, buffer_pool_manager_);
   //}
-  mu_.lock();
   Page *page = READ_FindLeafPage(key, false, transaction);
-
   if (page == nullptr) {
-    mu_.unlock();
     return false;
   }
 
@@ -80,7 +77,6 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   // done using; not dirty
   page->RUnlatch();
   buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
-  mu_.unlock();
   return ok;
 }
 
@@ -104,13 +100,11 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   //  return true;
   //}
   // unlock();
-  mu_.lock();
   check_txns(transaction);
 
   // 2. insert - ok = no duplicate
   bool ok = InsertIntoLeaf(key, value, transaction);
 
-  mu_.unlock();
   return ok;
 }
 
@@ -284,13 +278,11 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
-  mu_.lock();
   check_txns(transaction);
 
   // fetch - page hold WRITE latch -
   auto *page = WRITE_FindLeafPage(key, false, WType::DELETE, transaction);
   if (page == nullptr) {  // nullptr - empty - return immediately
-    mu_.unlock();
     return;
   }
   auto *leaf_page_node = reinterpret_cast<LeafPage *>(page->GetData());
@@ -302,7 +294,6 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   if (!has_modify) {
     release_N_unPin(leaf_page_node->GetPageId(), page, transaction,
                     false);  // page, ancestor not dirty - release and free
-    mu_.unlock();
     return;
   }
 
@@ -321,7 +312,6 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     }
     buffer_pool_manager_->DeletePage(leaf_page_node->GetPageId());
   }
-  mu_.unlock();
 }
 
 /*
@@ -558,15 +548,12 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
   // return INDEXITERATOR_TYPE();
-  mu_.lock();
   KeyType k;
   auto *page = READ_FindLeafPage(k, true);
   if (page == nullptr) {
-    mu_.unlock();
     return INDEXITERATOR_TYPE(nullptr, buffer_pool_manager_, -1);
   }
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
-  mu_.unlock();
   return INDEXITERATOR_TYPE(leaf_page_node, buffer_pool_manager_, 0);
 }
 
@@ -578,15 +565,12 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
   // return INDEXITERATOR_TYPE();
-  mu_.lock();
 
   auto *page = READ_FindLeafPage(key, false);
   if (page == nullptr) {
-    mu_.unlock();
     return INDEXITERATOR_TYPE(nullptr, buffer_pool_manager_, -1);
   }
   auto *leaf_page_node = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
-  mu_.unlock();
   return INDEXITERATOR_TYPE(leaf_page_node, buffer_pool_manager_, leaf_page_node->KeyIndex(key, comparator_));
 }
 
@@ -642,10 +626,13 @@ INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::is_pid_in_txns(Transaction *transaction, page_id_t pid) {
   std::shared_ptr<std::deque<Page *>> page_set = transaction->GetPageSet();
   for (auto &i : *page_set) {
-    auto *tmp = reinterpret_cast<BPlusTreePage *>(i->GetData());
-    if (tmp->GetPageId() != i->GetPageId()) {
-      LOG_ERROR("is_pid_in_txns %d %d", tmp->GetPageId(), i->GetPageId());
+    if (i == nullptr) {
+      continue;
     }
+    auto *tmp = reinterpret_cast<BPlusTreePage *>(i->GetData());
+    // if (tmp->GetPageId() != i->GetPageId()) {
+    //  LOG_ERROR("is_pid_in_txns %d %d", tmp->GetPageId(), i->GetPageId());
+    //}
     if (tmp->GetPageId() == pid) {
       return true;
     }
@@ -680,9 +667,6 @@ Page *BPLUSTREE_TYPE::get_sibling(int index, InternalPage *parent_node) {
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::release_N_unPin(page_id_t pid, Page *page, Transaction *transaction, bool dirty) {
   free_ancestor(transaction, dirty);  // ancestor must be dirty, otherwise it won't be in transaction
-  if (page->GetPinCount() > 1) {
-    LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
-  }
   page->WUnlatch();
   buffer_pool_manager_->UnpinPage(pid, dirty);
 }
@@ -702,13 +686,16 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
   BPlusTreePage *page_node;
   page_id_t val;
 
+  mu_.lock();
   if (IsEmpty()) {
+    mu_.unlock();
     return nullptr;
   }
 
   page = fetch_page(root_page_id_);
   page->RLatch();
   page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+  mu_.unlock();
 
   // if  root and leaf - new tree - return directly
   // if root ok, then recursively search
@@ -741,10 +728,13 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage_new(const KeyType &key, const ValueType
   Page *childPage;
   BPlusTreePage *page_node;
   page_id_t val;
+  mu_.lock();
   if (IsEmpty()) {
     StartNewTree(key, value);
+    mu_.unlock();
     return nullptr;
   }
+  transaction->AddIntoPageSet(nullptr);
 
   page = fetch_page(root_page_id_);
   page->WLatch();
@@ -785,9 +775,12 @@ Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WTyp
   Page *childPage;
   BPlusTreePage *page_node;
   page_id_t val;
+  mu_.lock();
   if (IsEmpty()) {
+    mu_.unlock();
     return nullptr;
   }
+  transaction->AddIntoPageSet(nullptr);
 
   page = fetch_page(root_page_id_);
   page->WLatch();
@@ -838,13 +831,13 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
   while (!page_set->empty()) {
     Page *p = page_set->front();
+    if (p == nullptr) {
+      mu_.unlock();
+      page_set->pop_front();
+      continue;
+    }
     auto *tmp = reinterpret_cast<BPlusTreePage *>(p->GetData());
     page_id_t pid = tmp->GetPageId();
-
-    if (p->GetPinCount() > 1) {
-      LOG_ERROR("%d - %d - %d - %d", p->GetPageId(), p->GetPinCount(), tmp->GetPageId(), root_page_id_);
-      throw Exception(ExceptionType::INVALID, "del");
-    }
 
     p->WUnlatch();
     buffer_pool_manager_->UnpinPage(pid, ancestor_dirty);
