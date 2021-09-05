@@ -93,15 +93,6 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) {
   // 1. if empty start new tree
-  // lock();
-  // if (IsEmpty()) {
-  //  StartNewTree(key, value);  // hold virtual root thoughtout
-  //  unlock();
-  //  return true;
-  //}
-  // unlock();
-  // check_txns(transaction);
-
   // 2. insert - ok = no duplicate
   return InsertIntoLeaf(key, value, transaction);
 }
