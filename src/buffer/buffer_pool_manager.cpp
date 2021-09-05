@@ -78,19 +78,6 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
     pages_[frame_id].pin_count_ += 1;
 
     return &pages_[frame_id];
-
-    // gc this page and proceed as if it does not find
-    // LOG_ERROR("FetchPageImpl fatal - %d - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(),
-    //          page_id, pages_[frame_id].GetPinCount());
-    // auto pid = page_id;
-    // auto fid = page_table_[pid];
-    // if (pages_[fid].GetPinCount() == 0) {
-    //  page_table_.erase(pid);
-    //  Reset_meta_dataL(fid);
-    //  free_list_.push_back(fid);
-    //} else {
-    //  throw Exception(ExceptionType::INVALID, "bpm check");
-    //}
   }
 
   // if all pinned, cannot find replacement
@@ -111,20 +98,11 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   // 3.
   auto old_page_id = pages_[frame_id].GetPageId();
   if (page_table_.find(old_page_id) != page_table_.end()) {
-    auto old_size = page_table_.size();
     page_table_.erase(old_page_id);
-    auto new_size = page_table_.size();
-
-    if (old_size == new_size) {
-      LOG_ERROR("page table - %d - %d", old_page_id, page_id);
-    }
   }
   page_table_[page_id] = frame_id;
 
   // 4.
-  if (page_id == 0) {
-    LOG_INFO("%d %d %d %d", page_id, frame_id, old_page_id, pages_[frame_id].GetPinCount());
-  }
   pages_[frame_id].ResetMemory();
   pages_[frame_id].page_id_ = page_id;
   pages_[frame_id].is_dirty_ = false;
@@ -135,16 +113,6 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   if (debug_msg) {
     LOG_INFO("FetchPageImpl - not found - page_id: %d", page_id);
   }
-
-  // for (auto &it : page_table_) {
-  //  auto pid = it.first;
-  //  auto frame_id = it.second;
-  //  if (pages_[frame_id].GetPageId() != pid) {
-  //    LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //    pages_[frame_id].GetPinCount()); LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size()); throw
-  //    Exception(ExceptionType::INVALID, "bpm check");
-  //  }
-  //}
 
   return &pages_[frame_id];
 }
@@ -213,16 +181,6 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
     //}
   }
 
-  // for (auto &it : page_table_) {
-  //  auto pid = it.first;
-  //  auto frame_id = it.second;
-  //  if (pages_[frame_id].GetPageId() != pid) {
-  //    LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //    pages_[frame_id].GetPinCount()); LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size()); throw
-  //    Exception(ExceptionType::INVALID, "bpm check");
-  //  }
-  //}
-
   return true;
 }
 
@@ -277,26 +235,19 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   page_id_t new_page_id = disk_manager_->AllocatePage();
 
   // gc();
-  for (auto &it : page_table_) {
-    auto pid = it.first;
-    auto frame_id = it.second;
-    auto find = false;
-    if (pages_[frame_id].GetPageId() != pid) {
-      find = true;
-      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
-      LOG_ERROR("check %d %ld - %ld", new_page_id, pool_size_, page_table_.size());
-      BPlusTreePage *node = reinterpret_cast<BPlusTreePage *>(pages_[frame_id].GetData());
+  // for (auto &it : page_table_) {
+  //   auto pid = it.first;
+  //   auto frame_id = it.second;
+  //   if (pages_[frame_id].GetPageId() != pid) {
+  //     LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
+  //     pages_[frame_id].GetPinCount()); LOG_ERROR("check %d %ld - %ld", new_page_id, pool_size_, page_table_.size());
+  //     BPlusTreePage *node = reinterpret_cast<BPlusTreePage *>(pages_[frame_id].GetData());
 
-      LOG_ERROR("double check %d - %d - %d - %d", node->GetPageId(), node->GetParentPageId(), node->IsLeafPage(),
-                node->GetSize());
-      // auto tmp_pid = node->GetPageId();
-      // pages_[frame_id].page_id_ = tmp_pid;
-      // throw Exception(ExceptionType::INVALID, "bpm check");
-    }
-    if (find) {
-      info();
-    }
-  }
+  //     LOG_ERROR("double check %d - %d - %d - %d", node->GetPageId(), node->GetParentPageId(), node->IsLeafPage(),
+  //               node->GetSize());
+  //     throw Exception(ExceptionType::INVALID, "bpm check");
+  //   }
+  // }
 
   // 1.
   if (is_all_pin()) {
@@ -314,13 +265,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // delete from page table
   page_id_t old_pid = pages_[new_frame_id].GetPageId();
   if (page_table_.find(old_pid) != page_table_.end()) {
-    auto old_size = page_table_.size();
     page_table_.erase(old_pid);
-    auto new_size = page_table_.size();
-
-    if (old_size == new_size) {
-      LOG_DEBUG("%d - size %ld", page_table_.find(old_pid) != page_table_.end(), page_table_.size());
-    }
   }
 
   // flush if dirty
@@ -329,9 +274,6 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   }
 
   // 3.
-  if (new_page_id == 0) {
-    LOG_INFO("%d %d %d %d", new_page_id, new_frame_id, old_pid, pages_[new_frame_id].GetPinCount());
-  }
   pages_[new_frame_id].ResetMemory();
   pages_[new_frame_id].is_dirty_ = false;
   pages_[new_frame_id].page_id_ = new_page_id;
@@ -394,12 +336,7 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   // 3.
   frame_id_t free_frame_id = page_table_[page_id];
   page_id_t pid = page_id;
-  auto old_size = page_table_.size();
   page_table_.erase(pid);
-  auto new_size = page_table_.size();
-  if (old_size == new_size) {
-    LOG_DEBUG("%d - size %ld", pid, page_table_.size());
-  }
 
   // reset meta data, flush if dirty
   if (pages_[free_frame_id].IsDirty()) {
@@ -416,16 +353,6 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
   // return to free list
   free_list_.push_back(free_frame_id);
-
-  // for (auto &it : page_table_) {
-  //   auto pid = it.first;
-  //   auto frame_id = it.second;
-  //   if (pages_[frame_id].GetPageId() != pid) {
-  //     LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //     pages_[frame_id].GetPinCount()); LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size()); throw
-  //     Exception(ExceptionType::INVALID, "bpm check");
-  //   }
-  // }
 
   return true;
 }
