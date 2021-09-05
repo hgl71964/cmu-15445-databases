@@ -11,6 +11,8 @@
 #include "storage/index/b_plus_tree_index.h"
 #include "storage/index/index.h"
 #include "storage/table/table_heap.h"
+#include "common/exception.h"
+#include "common/logger.h"
 
 namespace bustub {
 
@@ -77,14 +79,31 @@ class Catalog {
    */
   TableMetadata *CreateTable(Transaction *txn, const std::string &table_name, const Schema &schema) {
     BUSTUB_ASSERT(names_.count(table_name) == 0, "Table names should be unique!");
-    return nullptr;
+
+    // construct table
+    next_table_oid_++;
+    auto tbl_oid = next_table_oid_.load();
+    std::unique_ptr<TableHeap> tbl = std::make_unique<TableHeap>(bpm_, lock_manager_, log_manager_, txn);
+
+    // register
+    //std::unique_ptr<TableMetadata> tbl_meta = std::make_unique<TableMetadata>(schema, table_name, std::move(tbl), tbl_oid);
+    tables_[tbl_oid] = std::make_unique<TableMetadata>(schema, table_name, std::move(tbl), tbl_oid);;
+    names_[table_name] = tbl_oid;
+    return tables_[tbl_oid].get();
   }
 
   /** @return table metadata by name */
-  TableMetadata *GetTable(const std::string &table_name) { return nullptr; }
+  TableMetadata *GetTable(const std::string &table_name) {
+    if (names_.find(table_name) == names_.end()) {
+      LOG_INFO("cannot find table name %s", table_name.c_str());
+      return nullptr;
+    }
+    auto tbl_oid = names_[table_name];
+    return tables_[tbl_oid].get();
+  }
 
   /** @return table metadata by oid */
-  TableMetadata *GetTable(table_oid_t table_oid) { return nullptr; }
+  TableMetadata *GetTable(table_oid_t table_oid) { return tables_[table_oid].get(); }
 
   /**
    * Create a new index, populate existing data of the table and return its metadata.
