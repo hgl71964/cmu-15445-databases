@@ -103,9 +103,7 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   // check_txns(transaction);
 
   // 2. insert - ok = no duplicate
-  bool ok = InsertIntoLeaf(key, value, transaction);
-
-  return ok;
+  return InsertIntoLeaf(key, value, transaction);
 }
 
 /*
@@ -161,11 +159,12 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 
   // if full, split leaf node - now parent latch must been held
   if (new_size >= leaf_page_node->GetMaxSize()) {
-    LeafPage *new_leaf_page_node = Split(leaf_page_node, transaction);
+    LeafPage *new_leaf_page_node = Split(leaf_page_node);
     auto partition_key = new_leaf_page_node->KeyAt(0);  // partition key
 
     // recursively insert parent
     InsertIntoParent(leaf_page_node, partition_key, new_leaf_page_node, transaction);
+    buffer_pool_manager_->UnpinPage(new_leaf_page_node->GetPageId(), true);
   }
 
   // done using; mark dirty;
@@ -180,15 +179,12 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 /*WHen this is called, its left and parent have latch, so it is safe not to hold latch*/
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
-N *BPLUSTREE_TYPE::Split(N *node, Transaction *transaction) {
+N *BPLUSTREE_TYPE::Split(N *node) {
   BPlusTreePage *p = reinterpret_cast<BPlusTreePage *>(node);
 
   // new page
   page_id_t page_id;
   auto *page = new_page(&page_id);
-  page->WLatch();
-  transaction->AddIntoPageSet(page);
-
   if (p->IsLeafPage()) {
     LeafPage *tmp_n = reinterpret_cast<LeafPage *>(page->GetData());
     LeafPage *tmp = reinterpret_cast<LeafPage *>(p);
@@ -226,7 +222,7 @@ INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &key, BPlusTreePage *new_node,
                                       Transaction *transaction) {
   // ensure parent in transaction
-  check_parent(old_node, transaction);
+  // check_parent(old_node, transaction);
 
   // root - terminate recursion
   if (old_node->IsRootPage()) {
@@ -259,9 +255,10 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
 
   // recursive check
   if (new_size >= parent_page_node->GetMaxSize()) {
-    auto *new_parent_page_node = Split(parent_page_node, transaction);
+    auto *new_parent_page_node = Split(parent_page_node);
     auto partition_key = new_parent_page_node->KeyAt(0);  // partition key
     InsertIntoParent(parent_page_node, partition_key, new_parent_page_node, transaction);
+    buffer_pool_manager_->UnpinPage(new_parent_page_node->GetPageId(), true);
   }
 }
 
@@ -326,7 +323,7 @@ INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   // ensure parent in transaction
-  check_parent(node, transaction);
+  // check_parent(node, transaction);
 
   // root - termination of recursion
   if (node->IsRootPage()) {
@@ -792,11 +789,6 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
     // if in del set, del
     if (transaction->GetDeletedPageSet()->find(pid) != transaction->GetDeletedPageSet()->end()) {
-      // for (auto &i : *page_set) {
-      //  auto *tmp_n = reinterpret_cast<BPlusTreePage *>(i->GetData());
-      //  LOG_ERROR("delset - check %d %d", tmp_n->GetPageId(), i->GetPageId());
-      //}
-      // LOG_DEBUG("delset - %d ", pid);
       if (p->GetPinCount() != 0) {
         LOG_ERROR("%d - %d - %d", p->GetPageId(), p->GetPinCount(), root_page_id_);
       }
