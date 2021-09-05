@@ -142,8 +142,8 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction) {
   // fetch - page hold WRITE latch
-  auto *page = WRITE_FindLeafPage_new(key, value, false, WType::INSERT, transaction);
-  if (page == nullptr) {
+  auto *page = WRITE_FindLeafPage(key, value, false, WType::INSERT, transaction);
+  if (page == nullptr) {  // started a new tree
     return true;
   }
 
@@ -162,7 +162,6 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   // if full, split leaf node - now parent latch must been held
   if (new_size >= leaf_page_node->GetMaxSize()) {
     LeafPage *new_leaf_page_node = Split(leaf_page_node, transaction);
-
     auto partition_key = new_leaf_page_node->KeyAt(0);  // partition key
 
     // recursively insert parent
@@ -281,8 +280,9 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   check_txns(transaction);
 
   // fetch - page hold WRITE latch -
-  auto *page = WRITE_FindLeafPage(key, false, WType::DELETE, transaction);
-  if (page == nullptr) {  // nullptr - empty - return immediately
+  ValueType v;
+  auto *page = WRITE_FindLeafPage(key, v, false, WType::DELETE, transaction);
+  if (page == nullptr) {  // nullptr - empty tree - return immediately
     return;
   }
   auto *leaf_page_node = reinterpret_cast<LeafPage *>(page->GetData());
@@ -721,66 +721,24 @@ Page *BPLUSTREE_TYPE::READ_FindLeafPage(const KeyType &key, bool leftMost, Trans
   return page;
 }
 
-INDEX_TEMPLATE_ARGUMENTS
-Page *BPLUSTREE_TYPE::WRITE_FindLeafPage_new(const KeyType &key, const ValueType &value, bool leftMost, WType op,
-                                             Transaction *transaction) {
-  Page *page;
-  Page *childPage;
-  BPlusTreePage *page_node;
-  page_id_t val;
-  mu_.lock();
-  if (IsEmpty()) {
-    StartNewTree(key, value);
-    mu_.unlock();
-    return nullptr;
-  }
-  transaction->AddIntoPageSet(nullptr);
-
-  page = fetch_page(root_page_id_);
-  page->WLatch();
-  page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
-
-  // traverse
-  while (!page_node->IsLeafPage()) {
-    auto *internal_page_node = reinterpret_cast<InternalPage *>(page_node);
-    val = (leftMost) ? internal_page_node->ValueAt(0) : internal_page_node->Lookup(key, comparator_);
-
-    // get child
-    childPage = fetch_page(val);
-    childPage->WLatch();
-
-    // add current page to transactions
-    transaction->AddIntoPageSet(page);
-
-    // traverse
-    page = childPage;
-    page_node = reinterpret_cast<BPlusTreePage *>(page->GetData());
-
-    // check
-    if (isSafe(op, page_node)) {
-      free_ancestor(transaction, false);
-    }
-  }
-  if (page == nullptr) {
-    throw Exception(ExceptionType::INVALID, "traverse");
-  }
-  return page;
-}
-
 // @return: leaf with write latch
 // if parents are not safe, they exist in transaction
 INDEX_TEMPLATE_ARGUMENTS
-Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, bool leftMost, WType op, Transaction *transaction) {
+Page *BPLUSTREE_TYPE::WRITE_FindLeafPage(const KeyType &key, const ValueType &value, bool leftMost, WType op,
+                                         Transaction *transaction) {
   Page *page;
   Page *childPage;
   BPlusTreePage *page_node;
   page_id_t val;
   mu_.lock();
   if (IsEmpty()) {
+    if (op == WType::INSERT) {
+      StartNewTree(key, value);
+    }
     mu_.unlock();
     return nullptr;
   }
-  transaction->AddIntoPageSet(nullptr);
+  transaction->AddIntoPageSet(nullptr);  // mark as mu_.lock - will be unlock in free_ancestor
 
   page = fetch_page(root_page_id_);
   page->WLatch();

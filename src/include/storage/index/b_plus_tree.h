@@ -82,9 +82,8 @@ class BPlusTree {
   // expose for test purpose
   Page *FindLeafPage(const KeyType &key, bool leftMost = false);
   Page *READ_FindLeafPage(const KeyType &key, bool leftMost = false, Transaction *transaction = nullptr);
-  Page *WRITE_FindLeafPage(const KeyType &key, bool leftMost, WType op, Transaction *transaction);
-  Page *WRITE_FindLeafPage_new(const KeyType &key, const ValueType &value, bool leftMost, WType op,
-                               Transaction *transaction);
+  Page *WRITE_FindLeafPage(const KeyType &key, const ValueType &value, bool leftMost, WType op,
+                           Transaction *transaction);
 
  private:
   // self
