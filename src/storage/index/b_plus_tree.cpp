@@ -61,7 +61,6 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   //  ToString(page_node, buffer_pool_manager_);
   //}
   mu_.lock();
-
   Page *page = READ_FindLeafPage(key, false, transaction);
 
   if (page == nullptr) {
@@ -79,9 +78,6 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   }
 
   // done using; not dirty
-  if (page->GetPinCount() > 1) {
-    LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
-  }
   page->RUnlatch();
   buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
   mu_.unlock();
@@ -162,13 +158,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   ValueType val;
   bool exist = leaf_page_node->Lookup(key, &val, comparator_);
   if (exist) {
-    // release_N_unPin(page, transaction, false);  // page, ancestor not dirty
-    if (page->GetPinCount() > 1) {
-      LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
-    }
-    page->WUnlatch();
-    buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
-    free_ancestor(transaction, false);  // ancestor must be dirty, otherwise it won't be in transaction
+    release_N_unPin(leaf_page_node->GetPageId(), page, transaction, false);  // page, ancestor not dirty
     return false;
   }
 
@@ -177,7 +167,6 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 
   // if full, split leaf node - now parent latch must been held
   if (new_size >= leaf_page_node->GetMaxSize()) {
-    check_parent(leaf_page_node, transaction);
     LeafPage *new_leaf_page_node = Split(leaf_page_node, transaction);
 
     auto partition_key = new_leaf_page_node->KeyAt(0);  // partition key
@@ -187,13 +176,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   }
 
   // done using; mark dirty;
-  // release_N_unPin(page, transaction, true);  // page, ancestor dirty
-  if (page->GetPinCount() > 1) {
-    LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
-  }
-  page->WUnlatch();
-  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
-  free_ancestor(transaction, true);  // ancestor must be dirty, otherwise it won't be in transaction
+  release_N_unPin(leaf_page_node->GetPageId(), page, transaction, true);  // page, ancestor dirty
   return true;
 }
 
@@ -212,10 +195,6 @@ N *BPLUSTREE_TYPE::Split(N *node, Transaction *transaction) {
   auto *page = new_page(&page_id);
   page->WLatch();
   transaction->AddIntoPageSet(page);
-
-  // init new nodes
-  // N *new_page_node = reinterpret_cast<N *>(page->GetData());
-  // new_page_node->Init(page_id, node->GetParentPageId(), node->GetMaxSize());
 
   if (p->IsLeafPage()) {
     LeafPage *tmp_n = reinterpret_cast<LeafPage *>(page->GetData());
@@ -321,14 +300,8 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   int remain_size = leaf_page_node->RemoveAndDeleteRecord(key, comparator_);
   bool has_modify = (original_size != remain_size);
   if (!has_modify) {
-    // release_N_unPin(page, transaction, false);  // page, ancestor not dirty - release and free
-    if (page->GetPinCount() > 1) {
-      LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
-    }
-    page->WUnlatch();
-    buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), false);
-    free_ancestor(transaction, false);  // ancestor must be dirty, otherwise it won't be in transaction
-
+    release_N_unPin(leaf_page_node->GetPageId(), page, transaction,
+                    false);  // page, ancestor not dirty - release and free
     mu_.unlock();
     return;
   }
@@ -340,18 +313,11 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   }
 
   // close - and ancestor
-  // release_N_unPin(page, transaction, true);  // page, ancestor dirty - del will be addressed
-  if (page->GetPinCount() > 1) {
-    LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
-  }
-  page->WUnlatch();
-  buffer_pool_manager_->UnpinPage(leaf_page_node->GetPageId(), true);
-  free_ancestor(transaction, true);  // ancestor must be dirty, otherwise it won't be in transaction
-
+  release_N_unPin(leaf_page_node->GetPageId(), page, transaction,
+                  true);  // page, ancestor dirty - del will be addressed
   if (should_delete) {
     if (page->GetPinCount() != 0) {
       LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
-      throw Exception(ExceptionType::INVALID, "del");
     }
     buffer_pool_manager_->DeletePage(leaf_page_node->GetPageId());
   }
@@ -571,10 +537,6 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   auto *tmp = reinterpret_cast<BPlusTreePage *>(page->GetData());
   tmp->SetParentPageId(INVALID_PAGE_ID);
 
-  if (tmp->GetPageId() != page->GetPageId() || page->GetPageId() != val) {
-    LOG_DEBUG("adjustroot %d - %d - %d", tmp->GetPageId(), page->GetPageId(), val);
-  }
-
   // switch
   root_page_id_ = val;
   UpdateRootPageId(false);
@@ -667,18 +629,13 @@ Page *BPLUSTREE_TYPE::fetch_page(page_id_t pid) {
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::check_parent(BPlusTreePage *node, Transaction *transaction) {
-  // page_id_t parent_id;
-  // if (node->IsRootPage()) {
-  //  // TODO
-  //  // throw Exception(ExceptionType::INVALID, "check_parent");
-  //  parent_id = node->GetPageId();
-  //} else {
-  //  parent_id = node->GetParentPageId();
-  //}
-  // if (!is_pid_in_txns(transaction, parent_id)) {
-  //  LOG_ERROR("check parent %d %d %d", parent_id, node->GetPageId(), node->GetParentPageId());
-  //  throw Exception(ExceptionType::INVALID, "check_parent");
-  //}
+  if (node->IsRootPage()) {
+    return;
+  }
+  if (!is_pid_in_txns(transaction, node->GetParentPageId())) {
+    LOG_ERROR("check parent %d %d", node->GetPageId(), node->GetParentPageId());
+    throw Exception(ExceptionType::INVALID, "check_parent");
+  }
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -721,13 +678,13 @@ Page *BPLUSTREE_TYPE::get_sibling(int index, InternalPage *parent_node) {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::release_N_unPin(Page *page, Transaction *transaction, bool dirty) {
+void BPLUSTREE_TYPE::release_N_unPin(page_id_t pid, Page *page, Transaction *transaction, bool dirty) {
+  free_ancestor(transaction, dirty);  // ancestor must be dirty, otherwise it won't be in transaction
   if (page->GetPinCount() > 1) {
     LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
   }
   page->WUnlatch();
-  buffer_pool_manager_->UnpinPage(page->GetPageId(), dirty);
-  free_ancestor(transaction, dirty);  // ancestor must be dirty, otherwise it won't be in transaction
+  buffer_pool_manager_->UnpinPage(pid, dirty);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -880,7 +837,7 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
   auto page_set = transaction->GetPageSet();
 
   while (!page_set->empty()) {
-    Page *p = page_set->back();
+    Page *p = page_set->front();
     auto *tmp = reinterpret_cast<BPlusTreePage *>(p->GetData());
     page_id_t pid = tmp->GetPageId();
 
@@ -901,14 +858,13 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
       // LOG_DEBUG("delset - %d ", pid);
       if (p->GetPinCount() != 0) {
         LOG_ERROR("%d - %d - %d", p->GetPageId(), p->GetPinCount(), root_page_id_);
-        throw Exception(ExceptionType::INVALID, "del");
       }
       buffer_pool_manager_->DeletePage(pid);
       // buffer_pool_manager_->info();
       transaction->GetDeletedPageSet()->erase(pid);
     }
     // notice this clears elem in transaction - because page_set is a pointer
-    page_set->pop_back();
+    page_set->pop_front();
   }
 
   // check

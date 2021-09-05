@@ -94,7 +94,7 @@ class BPlusTree {
   Page *get_sibling(int index, InternalPage *parent_node);
   bool isSafe(WType op, BPlusTreePage *node);
   void free_ancestor(Transaction *transaction, bool ancestor_dirty);
-  void release_N_unPin(Page *page, Transaction *transaction, bool dirty);
+  void release_N_unPin(page_id_t pid, Page *page, Transaction *transaction, bool dirty);
   void lock();
   void unlock();
   void check_txns(Transaction *transaction);
