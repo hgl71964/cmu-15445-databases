@@ -129,9 +129,9 @@ class Catalog {
     auto idx_oid = next_index_oid_.load();
 
     // construct index meta data + index
-    IndexMetadata index_metadata = new IndexMetadata(index_name, table_name, &schema, key_attrs);
-    std::unique_ptr<Index> idx =
-        std::make_unique<Index>(&index_metadata);  // will de-alloc index_metadata in destructor
+    IndexMetadata *index_metadata = new IndexMetadata(index_name, table_name, &schema, key_attrs);
+    std::unique_ptr<BPLUSTREE_INDEX_TYPE> idx =
+        std::make_unique<BPLUSTREE_INDEX_TYPE>(index_metadata, bpm_);  // will de-alloc index_metadata in destructor
 
     // register
     indexes_[idx_oid] =
