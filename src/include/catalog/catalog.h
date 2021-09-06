@@ -8,11 +8,11 @@
 
 #include "buffer/buffer_pool_manager.h"
 #include "catalog/schema.h"
+#include "common/exception.h"
+#include "common/logger.h"
 #include "storage/index/b_plus_tree_index.h"
 #include "storage/index/index.h"
 #include "storage/table/table_heap.h"
-#include "common/exception.h"
-#include "common/logger.h"
 
 namespace bustub {
 
@@ -86,8 +86,7 @@ class Catalog {
     std::unique_ptr<TableHeap> tbl = std::make_unique<TableHeap>(bpm_, lock_manager_, log_manager_, txn);
 
     // register
-    //std::unique_ptr<TableMetadata> tbl_meta = std::make_unique<TableMetadata>(schema, table_name, std::move(tbl), tbl_oid);
-    tables_[tbl_oid] = std::make_unique<TableMetadata>(schema, table_name, std::move(tbl), tbl_oid);;
+    tables_[tbl_oid] = std::make_unique<TableMetadata>(schema, table_name, std::move(tbl), tbl_oid);
     names_[table_name] = tbl_oid;
     return tables_[tbl_oid].get();
   }
@@ -95,15 +94,20 @@ class Catalog {
   /** @return table metadata by name */
   TableMetadata *GetTable(const std::string &table_name) {
     if (names_.find(table_name) == names_.end()) {
-      LOG_INFO("cannot find table name %s", table_name.c_str());
-      return nullptr;
+      LOG_DEBUG("cannot find table name %s", table_name.c_str());
+      throw std::out_of_range("blah");
     }
-    auto tbl_oid = names_[table_name];
-    return tables_[tbl_oid].get();
+    return GetTable(names_[table_name]);
   }
 
   /** @return table metadata by oid */
-  TableMetadata *GetTable(table_oid_t table_oid) { return tables_[table_oid].get(); }
+  TableMetadata *GetTable(table_oid_t table_oid) {
+    if (tables_.find(table_oid) == tables_.end()) {
+      LOG_DEBUG("cannot find table oid %d", table_oid);
+      throw std::out_of_range("blah");
+    }
+    return tables_[table_oid].get();
+  }
 
   /**
    * Create a new index, populate existing data of the table and return its metadata.
@@ -120,14 +124,55 @@ class Catalog {
   IndexInfo *CreateIndex(Transaction *txn, const std::string &index_name, const std::string &table_name,
                          const Schema &schema, const Schema &key_schema, const std::vector<uint32_t> &key_attrs,
                          size_t keysize) {
-    return nullptr;
+    // construct index oid
+    next_index_oid_++;
+    auto idx_oid = next_index_oid_.load();
+
+    // construct index meta data + index
+    IndexMetadata index_metadata = new IndexMetadata(index_name, table_name, &schema, key_attrs);
+    std::unique_ptr<Index> idx = std::make_unique<Index>(&index_metadata);
+
+    // register
+    indexes_[idx_oid] =
+        std::make_unique<IndexInfo>(key_schema, index_name, std::move(idx), idx_oid, table_name, keysize);
+    index_names_[table_name][index_name] = idx_oid;
+    return indexes_[idx_oid].get();
   }
 
-  IndexInfo *GetIndex(const std::string &index_name, const std::string &table_name) { return nullptr; }
+  IndexInfo *GetIndex(const std::string &index_name, const std::string &table_name) {
+    if (index_names_.find(table_name) == index_names_.end()) {
+      LOG_DEBUG("cannot find table name %s", table_name.c_str());
+      throw std::out_of_range("blah");
+    }
+    if (index_names_[table_name].find(index_name) == index_names_[table_name].end()) {
+      LOG_DEBUG("cannot find index name %s", index_name.c_str());
+      throw std::out_of_range("blah");
+    }
 
-  IndexInfo *GetIndex(index_oid_t index_oid) { return nullptr; }
+    return GetIndex(index_names_[table_name][index_name]);
+  }
 
-  std::vector<IndexInfo *> GetTableIndexes(const std::string &table_name) { return std::vector<IndexInfo *>(); }
+  IndexInfo *GetIndex(index_oid_t index_oid) {
+    if (indexes_.find(index_oid) == indexes_.end()) {
+      LOG_DEBUG("cannot find index oid %d", index_oid);
+      throw std::out_of_range("blah");
+    }
+    return indexes_[index_oid].get();
+  }
+
+  std::vector<IndexInfo *> GetTableIndexes(const std::string &table_name) {
+    // return std::vector<IndexInfo *>();
+    if (index_names_.find(table_name) == index_names_.end()) {
+      LOG_DEBUG("cannot find table name %s", table_name.c_str());
+      throw std::out_of_range("blah");
+    }
+    std::vector<IndexInfo *> res;
+
+    for (auto &it : index_names_[table_name]) {
+      res.push_back(indexes_[it.second].get());
+    }
+    return res;
+  }
 
  private:
   [[maybe_unused]] BufferPoolManager *bpm_;
