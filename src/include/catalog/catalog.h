@@ -81,8 +81,7 @@ class Catalog {
     BUSTUB_ASSERT(names_.count(table_name) == 0, "Table names should be unique!");
 
     // construct table
-    next_table_oid_++;
-    auto tbl_oid = next_table_oid_.load();
+    auto tbl_oid = next_table_oid_.fetch_add(1) + 1;
     std::unique_ptr<TableHeap> tbl = std::make_unique<TableHeap>(bpm_, lock_manager_, log_manager_, txn);
 
     // register
@@ -125,8 +124,7 @@ class Catalog {
                          const Schema &schema, const Schema &key_schema, const std::vector<uint32_t> &key_attrs,
                          size_t keysize) {
     // construct index oid
-    next_index_oid_++;
-    auto idx_oid = next_index_oid_.load();
+    auto idx_oid = next_index_oid_.fetch_add(1) + 1;
 
     // construct index meta data + index
     IndexMetadata *index_metadata = new IndexMetadata(index_name, table_name, &schema, key_attrs);
