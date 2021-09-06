@@ -126,7 +126,7 @@ class Catalog {
     // construct index oid
     auto idx_oid = next_index_oid_.fetch_add(1) + 1;
 
-    // construct index meta data + index
+    // construct index meta data + index - XXX not sure about hash table index
     IndexMetadata *index_metadata = new IndexMetadata(index_name, table_name, &schema, key_attrs);
     std::unique_ptr<BPLUSTREE_INDEX_TYPE> idx =
         std::make_unique<BPLUSTREE_INDEX_TYPE>(index_metadata, bpm_);  // will de-alloc index_metadata in destructor
