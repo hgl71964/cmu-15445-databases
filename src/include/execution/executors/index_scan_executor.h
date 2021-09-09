@@ -19,13 +19,16 @@
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/index_scan_plan.h"
 #include "storage/table/tuple.h"
+// #include "storage/index/b_plus_tree_index.h"
+// #include "storage/page/b_plus_tree_page.h"
 
 namespace bustub {
 
 /**
  * IndexScanExecutor executes an index scan over a table.
  */
-
+//template <typename KeyType, typename ValueType, typename KeyComparator>
+// INDEX_TEMPLATE_ARGUMENTS
 class IndexScanExecutor : public AbstractExecutor {
  public:
   /**
@@ -44,5 +47,12 @@ class IndexScanExecutor : public AbstractExecutor {
  private:
   /** The index scan plan node to be executed. */
   const IndexScanPlanNode *plan_;
+
+  // assume data type
+  //IndexIterator<GenericKey<8>, RID, GenericComparator<8>> itr_;
+  //IndexIterator<GenericKey<8>, RID, GenericComparator<8>> itr_end_;
+  BPLUSTREE_INDEX_TYPE itr_;
+  BPLUSTREE_INDEX_TYPE itr_end_;
+  std::string tbl_name_;
 };
 }  // namespace bustub
