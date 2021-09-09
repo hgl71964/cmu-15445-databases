@@ -79,7 +79,7 @@ TEST(CatalogTest, CreateIndexTest) {
       nullptr, index_name, table_name, schema, key_schema, keys_attr, keysize);
 
   std::cout << idx_info->key_size_ << std::endl;
-  std::cout << idx_info->key_schema_ << std::endl;
+  // std::cout << idx_info->key_schema_ << std::endl;
 
   delete catalog;
   delete bpm;

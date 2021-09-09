@@ -140,6 +140,37 @@ class ExecutorTest : public ::testing::Test {
 };
 
 // NOLINTNEXTLINE
+TEST_F(ExecutorTest, SimpleSeqScanTest_0) {
+  // SELECT colA, colB FROM test_1 WHERE colA < 500
+
+  // Construct query plan
+  TableMetadata *table_info = GetExecutorContext()->GetCatalog()->GetTable("test_1");
+  Schema &schema = table_info->schema_;
+  auto *colA = MakeColumnValueExpression(schema, 0, "colA");
+  auto *colB = MakeColumnValueExpression(schema, 0, "colB");
+  auto *const500 = MakeConstantValueExpression(ValueFactory::GetIntegerValue(500));
+  auto *predicate = MakeComparisonExpression(colA, const500, ComparisonType::LessThan);
+  auto *out_schema = MakeOutputSchema({{"colA", colA}, {"colB", colB}});
+  SeqScanPlanNode plan{out_schema, predicate, table_info->oid_};
+
+  // Execute
+  std::vector<Tuple> result_set;
+  GetExecutionEngine()->Execute(&plan, &result_set, GetTxn(), GetExecutorContext());
+
+  // Verify
+  std::cout << "ColA, ColB" << std::endl;
+  std::cout << "size: " << result_set.size() << std::endl;
+  ASSERT_EQ(true, false);
+  for (const auto &tuple : result_set) {
+    ASSERT_TRUE(tuple.GetValue(out_schema, out_schema->GetColIdx("colA")).GetAs<int32_t>() < 500);
+    ASSERT_TRUE(tuple.GetValue(out_schema, out_schema->GetColIdx("colB")).GetAs<int32_t>() < 10);
+    std::cout << tuple.GetValue(out_schema, out_schema->GetColIdx("colA")).GetAs<int32_t>() << ", "
+              << tuple.GetValue(out_schema, out_schema->GetColIdx("colB")).GetAs<int32_t>() << std::endl;
+  }
+  ASSERT_EQ(result_set.size(), 500);
+}
+
+// NOLINTNEXTLINE
 TEST_F(ExecutorTest, SimpleSeqScanTest) {
   // SELECT colA, colB FROM test_1 WHERE colA < 500
 
