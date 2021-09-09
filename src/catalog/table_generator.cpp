@@ -68,6 +68,7 @@ void TableGenerator::FillTable(TableMetadata *info, TableInsertMeta *table_meta)
     // exec_ctx_->GetBufferPoolManager()->FlushAllPages();
   }
   LOG_INFO("Wrote %d tuples to table %s %s oid %d.", num_inserted, table_meta->name_, info->name_.c_str(), info->oid_);
+  LOG_INFO("%s", info->schema_.ToString().c_str());
 }
 
 void TableGenerator::GenerateTestTables() {

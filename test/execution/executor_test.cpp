@@ -159,8 +159,8 @@ TEST_F(ExecutorTest, SimpleSeqScanTest_0) {
 
   // Verify
   std::cout << "ColA, ColB" << std::endl;
+  std::cout << out_schema->GetColIdx("colA") << ", " << out_schema->GetColIdx("colB") << result_set.size() << std::endl;
   std::cout << "size: " << result_set.size() << std::endl;
-  ASSERT_EQ(true, false);
   for (const auto &tuple : result_set) {
     ASSERT_TRUE(tuple.GetValue(out_schema, out_schema->GetColIdx("colA")).GetAs<int32_t>() < 500);
     ASSERT_TRUE(tuple.GetValue(out_schema, out_schema->GetColIdx("colB")).GetAs<int32_t>() < 10);
