@@ -29,8 +29,8 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
 }
 
 void SeqScanExecutor::Init() {
-  auto *tbl_meta = GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid());
-  LOG_DEBUG("name %s %d", tbl_meta->name_.c_str(), tbl_meta->oid_);
+  // auto *tbl_meta = GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid());
+  // LOG_DEBUG("name %s %d", tbl_meta->name_.c_str(), tbl_meta->oid_);
 }
 
 bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
@@ -43,12 +43,13 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
 
     // eval predicate
     Value v = plan_->GetPredicate()->Evaluate(&tmp_tuple, GetOutputSchema());
-    LOG_DEBUG("%d %d", tmp_tuple.GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colA")).GetAs<int32_t>(),
-              tmp_tuple.GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colB")).GetAs<int32_t>());
-
     if (v.GetAs<bool>()) {
-      tuple = &tmp_tuple;
-      *rid = tuple->GetRid();
+      *tuple = tmp_tuple;
+      //LOG_DEBUG("%d %d %d %p", tuple->GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colA")).GetAs<int32_t>(),
+      //          tuple->GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colB")).GetAs<int32_t>(),
+      //          v.GetAs<bool>(), 
+      //          tuple);
+      *rid = itr_->GetRid();
       return true;
     }
   }
