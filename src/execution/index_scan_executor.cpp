@@ -21,10 +21,12 @@ IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanP
       tbl_name_(GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->table_name_) {}
 
 void IndexScanExecutor::Init() {
+  LOG_INFO("INDEX SCAN INiT");
   auto *tree_index = dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(
       GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_.get());
   itr_ = tree_index->GetBeginIterator();
   itr_end_ = tree_index->GetEndIterator();
+  LOG_INFO("INDEX SCAN ok");
   // itr_(GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_->GetBeginIterator()),
   // itr_end_(GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_->GetEndIterator()),
 }

@@ -174,12 +174,14 @@ TEST_F(ExecutorTest, SimpleIndexScanTest) {
   auto *tree_idx =
       reinterpret_cast<BPlusTreeIndex<GenericKey<16>, RID, GenericComparator<16>> *>(idx_info->index_.get());
   auto itr = tree_idx->GetBeginIterator();
+  auto end = tree_idx->GetEndIterator();
   int c = 0;
-  while (itr != tree_idx->GetEndIterator()) {
+  while (itr != end) {
     // auto mappingtype = *itr;
     // auto rid = mappingtype.second;
     // std::cout << rid.GetPageId() << rid.GetSlotNum() << std::endl;
     c++;
+    ++itr;
   }
   std::cout << c << std::endl;
 
