@@ -27,8 +27,6 @@ namespace bustub {
 /**
  * IndexScanExecutor executes an index scan over a table.
  */
-//template <typename KeyType, typename ValueType, typename KeyComparator>
-// INDEX_TEMPLATE_ARGUMENTS
 class IndexScanExecutor : public AbstractExecutor {
  public:
   /**
@@ -49,10 +47,10 @@ class IndexScanExecutor : public AbstractExecutor {
   const IndexScanPlanNode *plan_;
 
   // assume data type
-  //IndexIterator<GenericKey<8>, RID, GenericComparator<8>> itr_;
-  //IndexIterator<GenericKey<8>, RID, GenericComparator<8>> itr_end_;
-  BPLUSTREE_INDEX_TYPE itr_;
-  BPLUSTREE_INDEX_TYPE itr_end_;
+  IndexIterator<GenericKey<8>, RID, GenericComparator<8>> itr_;
+  IndexIterator<GenericKey<8>, RID, GenericComparator<8>> itr_end_;
+  // BPLUSTREE_INDEX_TYPE itr_;
+  // BPLUSTREE_INDEX_TYPE itr_end_;
   std::string tbl_name_;
 };
 }  // namespace bustub
