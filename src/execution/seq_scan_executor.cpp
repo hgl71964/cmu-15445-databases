@@ -50,7 +50,7 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
       //          tuple->GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colB")).GetAs<int32_t>(),
       //          v.GetAs<bool>(),
       //          tuple);
-      *rid = itr_->GetRid();
+      *rid = tmp_tuple.GetRid();
       return true;
     }
   }
