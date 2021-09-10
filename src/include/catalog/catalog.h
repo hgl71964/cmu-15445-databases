@@ -126,14 +126,64 @@ class Catalog {
     // construct index oid
     auto idx_oid = next_index_oid_.fetch_add(1) + 1;
 
-    // construct index meta data + index - XXX not sure about hash table index
+    // construct index meta data + index - not sure about hash index
     IndexMetadata *index_metadata = new IndexMetadata(index_name, table_name, &schema, key_attrs);
-    std::unique_ptr<BPLUSTREE_INDEX_TYPE> idx =
-        std::make_unique<BPLUSTREE_INDEX_TYPE>(index_metadata, bpm_);  // will de-alloc index_metadata in destructor
+    // std::unique_ptr<BPLUSTREE_INDEX_TYPE> idx =
+    //     std::make_unique<BPLUSTREE_INDEX_TYPE>(index_metadata, bpm_);  // will de-alloc index_metadata in destructor
+    if (table_name == "test_1") {
+      std::unique_ptr<BPlusTreeIndex<GenericKey<16>, RID, GenericComparator<16>>> idx =
+          std::make_unique<BPlusTreeIndex<GenericKey<16>, RID, GenericComparator<16>>>(index_metadata, bpm_);
+
+      // populate tree index
+      auto *tbl_meta = GetTable(table_name);
+      LOG_INFO("tbl name: %s", tbl_meta->name_.c_str());
+      auto itr = tbl_meta->table_->Begin(txn);
+      auto end = tbl_meta->table_->End();
+      while (itr != end) {
+        auto tmp_rid = itr->GetRid();
+        auto tmp_tuple = *itr;
+
+        idx->InsertEntry(tmp_tuple, tmp_rid, txn);  // insert to index
+        ++itr;                                      // incr
+      }
+      indexes_[idx_oid] =
+          std::make_unique<IndexInfo>(key_schema, index_name, std::move(idx), idx_oid, table_name, keysize);
+    } else {
+      std::unique_ptr<BPLUSTREE_INDEX_TYPE> idx =
+          std::make_unique<BPLUSTREE_INDEX_TYPE>(index_metadata, bpm_);  // will de-alloc index_metadata in destructor
+
+      // populate tree index
+      auto *tbl_meta = GetTable(table_name);
+      LOG_INFO("tbl name: %s", tbl_meta->name_.c_str());
+      auto itr = tbl_meta->table_->Begin(txn);
+      auto end = tbl_meta->table_->End();
+      while (itr != end) {
+        auto tmp_rid = itr->GetRid();
+        auto tmp_tuple = *itr;
+
+        idx->InsertEntry(tmp_tuple, tmp_rid, txn);  // insert to index
+        ++itr;                                      // incr
+      }
+      indexes_[idx_oid] =
+          std::make_unique<IndexInfo>(key_schema, index_name, std::move(idx), idx_oid, table_name, keysize);
+    }
+
+    // populate tree index
+    // auto *tbl_meta = GetTable(table_name);
+    // LOG_INFO("tbl name: %s", tbl_meta->name_.c_str());
+    // auto itr = tbl_meta->table_->Begin(txn);
+    // auto end = tbl_meta->table_->End();
+    // while (itr != end) {
+    //   auto tmp_rid = itr->GetRid();
+    //   auto tmp_tuple = *itr;
+
+    //   idx->InsertEntry(tmp_tuple, tmp_rid, txn);  // insert to index
+    //   ++itr;                                      // incr
+    // }
 
     // register
-    indexes_[idx_oid] =
-        std::make_unique<IndexInfo>(key_schema, index_name, std::move(idx), idx_oid, table_name, keysize);
+    // indexes_[idx_oid] =
+    //     std::make_unique<IndexInfo>(key_schema, index_name, std::move(idx), idx_oid, table_name, keysize);
     index_names_[table_name][index_name] = idx_oid;
     return indexes_[idx_oid].get();
   }

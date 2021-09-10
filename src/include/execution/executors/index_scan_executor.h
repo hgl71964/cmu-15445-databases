@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "common/rid.h"

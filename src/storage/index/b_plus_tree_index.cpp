@@ -10,6 +10,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "storage/index/b_plus_tree_index.h"
+#include "common/logger.h"
 
 namespace bustub {
 /*
@@ -25,14 +26,18 @@ INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_INDEX_TYPE::InsertEntry(const Tuple &key, RID rid, Transaction *transaction) {
   // construct insert index key
   KeyType index_key;
+  // LOG_INFO("index_key %ld key %d ", sizeof(index_key.data_), key.GetLength());
   index_key.SetFromKey(key);
+  // LOG_INFO("InsertEntry %ld %d %d", index_key.ToString(), rid.GetPageId(), rid.GetSlotNum());
 
   container_.Insert(index_key, rid, transaction);
+  // LOG_INFO("InsertEntry ok");
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_INDEX_TYPE::DeleteEntry(const Tuple &key, RID rid, Transaction *transaction) {
   // construct delete index key
+  // LOG_INFO("DeleteEntry");
   KeyType index_key;
   index_key.SetFromKey(key);
 
@@ -42,6 +47,7 @@ void BPLUSTREE_INDEX_TYPE::DeleteEntry(const Tuple &key, RID rid, Transaction *t
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_INDEX_TYPE::ScanKey(const Tuple &key, std::vector<RID> *result, Transaction *transaction) {
   // construct scan index key
+  // LOG_INFO("ScanKey");
   KeyType index_key;
   index_key.SetFromKey(key);
 

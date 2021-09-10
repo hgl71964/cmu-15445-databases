@@ -42,6 +42,8 @@ TEST(CatalogTest, CreateTableTest) {
   auto *table_metadata = catalog->CreateTable(nullptr, table_name, schema);
   (void)table_metadata;
 
+  // auto *p = catalog->CreateTable(nullptr, table_name, schema);
+
   // Notice that this test case doesn't check anything! :(
   // It is up to you to extend it
 
@@ -71,7 +73,7 @@ TEST(CatalogTest, CreateIndexTest) {
   keys.emplace_back("K", TypeId::INTEGER);
 
   Schema key_schema(keys);
-  std::string index_name = "tomato";
+  std::string index_name = "k1";
 
   auto keys_attr = std::vector<uint32_t>{1};
   size_t keysize = 1;
@@ -79,7 +81,10 @@ TEST(CatalogTest, CreateIndexTest) {
       nullptr, index_name, table_name, schema, key_schema, keys_attr, keysize);
 
   std::cout << idx_info->key_size_ << std::endl;
-  // std::cout << idx_info->key_schema_ << std::endl;
+  std::cout << idx_info << std::endl;
+
+  auto *p = catalog->GetIndex("k1", "potato");
+  std::cout << p << std::endl;
 
   delete catalog;
   delete bpm;

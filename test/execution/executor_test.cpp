@@ -17,7 +17,9 @@
 #include <utility>
 #include <vector>
 
+#include "execution/executors/index_scan_executor.h"
 #include "execution/plans/delete_plan.h"
+#include "execution/plans/index_scan_plan.h"
 #include "execution/plans/limit_plan.h"
 
 #include "buffer/buffer_pool_manager.h"
@@ -35,6 +37,8 @@
 #include "execution/plans/seq_scan_plan.h"
 #include "gtest/gtest.h"
 #include "storage/b_plus_tree_test_util.h"  // NOLINT
+#include "storage/index/b_plus_tree_index.h"
+#include "storage/page/b_plus_tree_page.h"
 #include "storage/table/tuple.h"
 #include "type/value_factory.h"
 
@@ -140,7 +144,7 @@ class ExecutorTest : public ::testing::Test {
 };
 
 // NOLINTNEXTLINE
-TEST_F(ExecutorTest, SimpleSeqScanTest_0) {
+TEST_F(ExecutorTest, SimpleIndexScanTest) {
   // SELECT colA, colB FROM test_1 WHERE colA < 500
 
   // Construct query plan
@@ -151,7 +155,36 @@ TEST_F(ExecutorTest, SimpleSeqScanTest_0) {
   auto *const500 = MakeConstantValueExpression(ValueFactory::GetIntegerValue(500));
   auto *predicate = MakeComparisonExpression(colA, const500, ComparisonType::LessThan);
   auto *out_schema = MakeOutputSchema({{"colA", colA}, {"colB", colB}});
-  SeqScanPlanNode plan{out_schema, predicate, table_info->oid_};
+
+  // index
+  std::vector<Column> keys;
+  keys.emplace_back("K", TypeId::INTEGER);
+
+  Schema key_schema(keys);
+  std::string index_name = "k1";
+
+  auto keys_attr = std::vector<uint32_t>{1};
+  size_t keysize = 1;
+  auto *idx_info = GetExecutorContext()->GetCatalog()->CreateIndex<GenericKey<16>, RID, GenericComparator<16>>(
+      GetTxn(), index_name, "test_1", schema, key_schema, keys_attr, keysize);
+
+  std::cout << "create index info: " << idx_info << std::endl;
+
+  // iterate tree_index and print
+  auto *tree_idx =
+      reinterpret_cast<BPlusTreeIndex<GenericKey<16>, RID, GenericComparator<16>> *>(idx_info->index_.get());
+  auto itr = tree_idx->GetBeginIterator();
+  int c = 0;
+  while (itr != tree_idx->GetEndIterator()) {
+    // auto mappingtype = *itr;
+    // auto rid = mappingtype.second;
+    // std::cout << rid.GetPageId() << rid.GetSlotNum() << std::endl;
+    c++;
+  }
+  std::cout << c << std::endl;
+
+  // create plan
+  IndexScanPlanNode plan{out_schema, predicate, idx_info->index_oid_};
 
   // Execute
   std::vector<Tuple> result_set;
