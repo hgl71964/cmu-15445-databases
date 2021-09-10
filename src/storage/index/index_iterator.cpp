@@ -13,8 +13,9 @@ namespace bustub {
  * set your own input parameters
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::IndexIterator() = default;
-//: page_id(INVALID_PAGE_ID), buffer_pool_manager_(nullptr), index(0) {}
+INDEXITERATOR_TYPE::IndexIterator() =
+    default;  // default -> members to have default value as defined in index_iterator.h
+// INDEXITERATOR_TYPE::IndexIterator() : leaf_(nullptr), buffer_pool_manager_(nullptr), index_(-1) {}
 
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::IndexIterator(B_PLUS_TREE_LEAF_PAGE_TYPE *leaf, BufferPoolManager *bpm, int index)

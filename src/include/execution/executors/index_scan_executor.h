@@ -50,6 +50,8 @@ class IndexScanExecutor : public AbstractExecutor {
   // assume data type
   IndexIterator<GenericKey<8>, RID, GenericComparator<8>> itr_;
   IndexIterator<GenericKey<8>, RID, GenericComparator<8>> itr_end_;
+  IndexIterator<GenericKey<16>, RID, GenericComparator<16>> itr_16;
+  IndexIterator<GenericKey<16>, RID, GenericComparator<16>> itr_end_16;
   // BPLUSTREE_INDEX_TYPE itr_;
   // BPLUSTREE_INDEX_TYPE itr_end_;
   std::string tbl_name_;

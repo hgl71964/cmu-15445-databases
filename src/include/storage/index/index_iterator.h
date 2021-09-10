@@ -61,9 +61,9 @@ class IndexIterator {
 
  private:
   // add your own private member variables here
-  B_PLUS_TREE_LEAF_PAGE_TYPE *leaf_;
-  BufferPoolManager *buffer_pool_manager_;
-  int index_;
+  B_PLUS_TREE_LEAF_PAGE_TYPE *leaf_{nullptr};
+  BufferPoolManager *buffer_pool_manager_{nullptr};
+  int index_{-1};
 };
 
 }  // namespace bustub
