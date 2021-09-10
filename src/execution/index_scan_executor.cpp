@@ -18,8 +18,6 @@ namespace bustub {
 IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanPlanNode *plan)
     : AbstractExecutor(exec_ctx),
       plan_(plan),
-      // itr_(GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_->GetBeginIterator()),
-      // itr_end_(GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_->GetEndIterator()),
       tbl_name_(GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->table_name_) {}
 
 void IndexScanExecutor::Init() {
