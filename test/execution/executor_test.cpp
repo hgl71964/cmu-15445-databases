@@ -152,9 +152,9 @@ void stall() {
 TEST_F(ExecutorTest, KeyLenTest) {
   // std::vector<std::string> tbls{"empty_table", "empty_table2",
   //               "empty_table3", "test_1",  "test_2",   "test_3"};
-  std::vector<std::string> tbls{"test_1",  "test_2",   "test_3"};
-  for (auto &t: tbls) {
-  auto table_info = GetExecutorContext()->GetCatalog()->GetTable(t);
+  std::vector<std::string> tbls{"test_1", "test_2", "test_3"};
+  for (auto &t : tbls) {
+    auto table_info = GetExecutorContext()->GetCatalog()->GetTable(t);
     {
       auto itr = table_info->table_->Begin(GetTxn());
       std::cout << "tbl: " << table_info->name_ << "key len: " << itr->GetLength() << std::endl;
