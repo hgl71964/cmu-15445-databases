@@ -183,8 +183,6 @@ TEST_F(ExecutorTest, SimpleIndexScanTest) {
   // auto *predicate = MakeComparisonExpression(colA, const500, ComparisonType::LessThan);
   // auto *out_schema = MakeOutputSchema({{"col1", colA}, {"col2", colB}});
 
-  stall();
-
   // index
   std::vector<Column> keys;
   keys.emplace_back("K", TypeId::INTEGER);
@@ -358,11 +356,11 @@ TEST_F(ExecutorTest, SimpleSelectInsertTest) {
               << result_set2[i].GetValue(out_schema2, out_schema2->GetColIdx("colB")).GetAs<int32_t>() << std::endl;
   }
   ASSERT_EQ(result_set1.size(), 500);
-  stall();
 }
 
 // NOLINTNEXTLINE
 TEST_F(ExecutorTest, SimpleRawInsertWithIndexTest) {
+  stall();
   // INSERT INTO empty_table2 VALUES (100, 10), (101, 11), (102, 12)
   // Create Values to insert
   std::vector<Value> val1{ValueFactory::GetIntegerValue(100), ValueFactory::GetIntegerValue(10)};
