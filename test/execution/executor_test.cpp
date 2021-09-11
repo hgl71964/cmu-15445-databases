@@ -143,6 +143,26 @@ class ExecutorTest : public ::testing::Test {
   static constexpr uint32_t MAX_VARCHAR_SIZE = 128;
 };
 
+void stall() {
+  int *p = nullptr;
+  int a = *p;
+  std::cout << a << std::endl;
+}
+
+TEST_F(ExecutorTest, KeyLenTest) {
+  // std::vector<std::string> tbls{"empty_table", "empty_table2",
+  //               "empty_table3", "test_1",  "test_2",   "test_3"};
+  std::vector<std::string> tbls{"test_1",  "test_2",   "test_3"};
+  for (auto &t: tbls) {
+  auto table_info = GetExecutorContext()->GetCatalog()->GetTable(t);
+    {
+      auto itr = table_info->table_->Begin(GetTxn());
+      std::cout << "tbl: " << table_info->name_ << "key len: " << itr->GetLength() << std::endl;
+    }
+  }
+  // stall();
+}
+
 // NOLINTNEXTLINE
 TEST_F(ExecutorTest, SimpleIndexScanTest) {
   // SELECT colA, colB FROM test_1 WHERE colA < 500
@@ -162,6 +182,8 @@ TEST_F(ExecutorTest, SimpleIndexScanTest) {
   // auto *const500 = MakeConstantValueExpression(ValueFactory::GetIntegerValue(500));
   // auto *predicate = MakeComparisonExpression(colA, const500, ComparisonType::LessThan);
   // auto *out_schema = MakeOutputSchema({{"col1", colA}, {"col2", colB}});
+
+  stall();
 
   // index
   std::vector<Column> keys;
@@ -336,6 +358,7 @@ TEST_F(ExecutorTest, SimpleSelectInsertTest) {
               << result_set2[i].GetValue(out_schema2, out_schema2->GetColIdx("colB")).GetAs<int32_t>() << std::endl;
   }
   ASSERT_EQ(result_set1.size(), 500);
+  stall();
 }
 
 // NOLINTNEXTLINE
