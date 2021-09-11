@@ -74,10 +74,14 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     tbl_meta_->table_->InsertTuple(tmp_tuple, &tmp_rid, GetExecutorContext()->GetTransaction());
 
     // insert into index if necessary
-    for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(tbl_meta_->name_)) {
-      auto *tree_index =
-          dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
-      tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
+    try {
+      for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(tbl_meta_->name_)) {
+        auto *tree_index =
+            dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
+        tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
+      }
+    } catch(...) {
+        LOG_INFO("no index for table: %s", tbl_meta_->name_.c_str());
     }
     return true;
   }
