@@ -54,8 +54,8 @@ bool IndexScanExecutor::Next(Tuple *tuple, RID *rid) {
       }
 
       // eval predicate
-      Value v = plan_->GetPredicate()->Evaluate(&tmp_tuple, GetOutputSchema());
-      if (v.GetAs<bool>()) {
+      auto *p = plan_->GetPredicate();  // could be nullptr
+      if (p == nullptr || plan_->GetPredicate()->Evaluate(&tmp_tuple, GetOutputSchema()).GetAs<bool>()) {
         *tuple = tmp_tuple;
         *rid = tmp_rid;
         return true;
@@ -82,8 +82,8 @@ bool IndexScanExecutor::Next(Tuple *tuple, RID *rid) {
     }
 
     // eval predicate
-    Value v = plan_->GetPredicate()->Evaluate(&tmp_tuple, GetOutputSchema());
-    if (v.GetAs<bool>()) {
+    auto *p = plan_->GetPredicate();  // could be nullptr
+    if (p == nullptr || plan_->GetPredicate()->Evaluate(&tmp_tuple, GetOutputSchema()).GetAs<bool>()) {
       *tuple = tmp_tuple;
       // LOG_DEBUG("%d %d %d %p", tuple->GetValue(GetOutputSchema(),
       // GetOutputSchema()->GetColIdx("colA")).GetAs<int32_t>(),

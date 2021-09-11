@@ -42,14 +42,9 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
     ++itr_;
 
     // eval predicate
-    Value v = plan_->GetPredicate()->Evaluate(&tmp_tuple, GetOutputSchema());
-    if (v.GetAs<bool>()) {
+    auto *p = plan_->GetPredicate();  // could be nullptr
+    if (p == nullptr || plan_->GetPredicate()->Evaluate(&tmp_tuple, GetOutputSchema()).GetAs<bool>()) {
       *tuple = tmp_tuple;
-      // LOG_DEBUG("%d %d %d %p", tuple->GetValue(GetOutputSchema(),
-      // GetOutputSchema()->GetColIdx("colA")).GetAs<int32_t>(),
-      //          tuple->GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colB")).GetAs<int32_t>(),
-      //          v.GetAs<bool>(),
-      //          tuple);
       *rid = tmp_tuple.GetRid();
       return true;
     }

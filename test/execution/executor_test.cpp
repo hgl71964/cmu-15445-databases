@@ -245,6 +245,7 @@ TEST_F(ExecutorTest, SimpleRawInsertTest) {
   InsertPlanNode insert_plan{std::move(raw_vals), table_info->oid_};
 
   GetExecutionEngine()->Execute(&insert_plan, nullptr, GetTxn(), GetExecutorContext());
+  std::cout << "done raw insert" << std::endl;
 
   // Iterate through table make sure that values were inserted.
   // SELECT * FROM empty_table2;
@@ -257,7 +258,8 @@ TEST_F(ExecutorTest, SimpleRawInsertTest) {
   std::vector<Tuple> result_set;
   GetExecutionEngine()->Execute(&scan_plan, &result_set, GetTxn(), GetExecutorContext());
 
-  std::cout << "ColA, ColB" << std::endl;
+  std::cout << "ColA, ColB"
+            << " " << result_set.size() << std::endl;
   // First value
   ASSERT_EQ(result_set[0].GetValue(out_schema, out_schema->GetColIdx("colA")).GetAs<int32_t>(), 100);
   ASSERT_EQ(result_set[0].GetValue(out_schema, out_schema->GetColIdx("colB")).GetAs<int32_t>(), 10);
