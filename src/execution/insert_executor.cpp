@@ -49,7 +49,7 @@ bool InsertExecutor::direct_insert() {
           tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
         }
       } catch (...) {
-        LOG_INFO("no index for table: %s", tbl_meta_->name_.c_str());
+        // LOG_INFO("no index for table: %s", tbl_meta_->name_.c_str());
       }
     }
     // mark inserted

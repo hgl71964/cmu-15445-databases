@@ -458,6 +458,12 @@ TEST_F(ExecutorTest, SimpleNestedLoopJoinTest) {
   const Schema *out_schema1;
   {
     auto table_info = GetExecutorContext()->GetCatalog()->GetTable("test_1");
+
+    {
+      auto itr = table_info->table_->Begin(GetTxn());
+      std::cout << "tbl: " << table_info->name_ << "key len: " << itr->GetLength() << std::endl;
+    }
+
     auto &schema = table_info->schema_;
     auto colA = MakeColumnValueExpression(schema, 0, "colA");
     auto colB = MakeColumnValueExpression(schema, 0, "colB");
@@ -468,6 +474,12 @@ TEST_F(ExecutorTest, SimpleNestedLoopJoinTest) {
   const Schema *out_schema2;
   {
     auto table_info = GetExecutorContext()->GetCatalog()->GetTable("test_2");
+
+    {
+      auto itr = table_info->table_->Begin(GetTxn());
+      std::cout << "tbl: " << table_info->name_ << "key len: " << itr->GetLength() << std::endl;
+    }
+
     auto &schema = table_info->schema_;
     auto col1 = MakeColumnValueExpression(schema, 0, "col1");
     auto col3 = MakeColumnValueExpression(schema, 0, "col3");
