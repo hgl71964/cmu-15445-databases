@@ -48,7 +48,7 @@ bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
           }
         }
       } catch (...) {
-        LOG_INFO("no index for table: %s", table_info_->name_.c_str());
+        // LOG_INFO("no index for table: %s", table_info_->name_.c_str());
       }
     }
     return true;
