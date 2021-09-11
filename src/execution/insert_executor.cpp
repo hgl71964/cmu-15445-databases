@@ -80,8 +80,8 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
             dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
         tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
       }
-    } catch(...) {
-        LOG_INFO("no index for table: %s", tbl_meta_->name_.c_str());
+    } catch (...) {
+      LOG_INFO("no index for table: %s", tbl_meta_->name_.c_str());
     }
     return true;
   }
