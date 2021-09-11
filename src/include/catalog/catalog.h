@@ -215,7 +215,7 @@ class Catalog {
     // return std::vector<IndexInfo *>();
     if (index_names_.find(table_name) == index_names_.end()) {
       // LOG_DEBUG("cannot find table name %s", table_name.c_str());
-      throw std::out_of_range("blah");
+      return std::vector<IndexInfo *>();
     }
     std::vector<IndexInfo *> res;
 

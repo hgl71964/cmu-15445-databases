@@ -155,6 +155,13 @@ TEST_F(ExecutorTest, SimpleIndexScanTest) {
   auto *const500 = MakeConstantValueExpression(ValueFactory::GetIntegerValue(500));
   auto *predicate = MakeComparisonExpression(colA, const500, ComparisonType::LessThan);
   auto *out_schema = MakeOutputSchema({{"colA", colA}, {"colB", colB}});
+  // TableMetadata *table_info = GetExecutorContext()->GetCatalog()->GetTable("test_2");
+  // Schema &schema = table_info->schema_;
+  // auto *colA = MakeColumnValueExpression(schema, 0, "col1");
+  // auto *colB = MakeColumnValueExpression(schema, 0, "col2");
+  // auto *const500 = MakeConstantValueExpression(ValueFactory::GetIntegerValue(500));
+  // auto *predicate = MakeComparisonExpression(colA, const500, ComparisonType::LessThan);
+  // auto *out_schema = MakeOutputSchema({{"col1", colA}, {"col2", colB}});
 
   // index
   std::vector<Column> keys;

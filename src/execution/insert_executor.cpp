@@ -81,7 +81,7 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
         tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
       }
     } catch (...) {
-      LOG_INFO("no index for table: %s", tbl_meta_->name_.c_str());
+      // LOG_INFO("no index for table: %s", tbl_meta_->name_.c_str());
     }
     return true;
   }
