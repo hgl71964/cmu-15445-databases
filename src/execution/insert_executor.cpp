@@ -45,7 +45,9 @@ bool InsertExecutor::direct_insert() {
       for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(tbl_meta_->name_)) {
         auto *tree_index =
             dynamic_cast<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>> *>(index_info->index_.get());
-        tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
+        auto index_K_tmp =
+            tmp_tuple.KeyFromTuple(tbl_meta_->schema_, index_info->key_schema_, tree_index->GetKeyAttrs());
+        tree_index->InsertEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
       }
     }
     // mark inserted
@@ -73,7 +75,8 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(tbl_meta_->name_)) {
       auto *tree_index =
           dynamic_cast<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>> *>(index_info->index_.get());
-      tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
+      auto index_K_tmp = tmp_tuple.KeyFromTuple(tbl_meta_->schema_, index_info->key_schema_, tree_index->GetKeyAttrs());
+      tree_index->InsertEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
     }
     return true;
   }

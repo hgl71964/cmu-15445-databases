@@ -68,6 +68,7 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
         auto index_K =
             updated_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, tree_index->GetKeyAttrs());
 
+        tree_index->DeleteEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
         tree_index->DeleteEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
         tree_index->DeleteEntry(index_K, tmp_rid, GetExecutorContext()->GetTransaction());
         tree_index->v_InsertEntry(index_K, tmp_rid, GetExecutorContext()->GetTransaction());
