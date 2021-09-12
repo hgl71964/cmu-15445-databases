@@ -416,6 +416,8 @@ TEST_F(ExecutorTest, SimpleRawInsertWithIndexTest) {
     auto index_key = table_tuple.KeyFromTuple(schema, index_info->key_schema_, index_info->index_->GetKeyAttrs());
     index_info->index_->ScanKey(index_key, &rids, GetTxn());
     Tuple indexed_tuple;
+    // std::vector<RID> rid;
+    // auto fetch_tuple = table_info->table_->GetTuple(rid[0], &indexed_tuple, GetTxn());
     auto fetch_tuple = table_info->table_->GetTuple(rids[0], &indexed_tuple, GetTxn());
 
     ASSERT_TRUE(fetch_tuple);
