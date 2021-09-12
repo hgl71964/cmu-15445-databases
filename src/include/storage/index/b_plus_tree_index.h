@@ -28,10 +28,13 @@ class BPlusTreeIndex : public Index {
   BPlusTreeIndex(IndexMetadata *metadata, BufferPoolManager *buffer_pool_manager);
 
   void InsertEntry(const Tuple &key, RID rid, Transaction *transaction) override;
+  void v_InsertEntry(const Tuple &key, RID rid, Transaction *transaction);
 
   void DeleteEntry(const Tuple &key, RID rid, Transaction *transaction) override;
+  void v_DeleteEntry(const Tuple &key, RID rid, Transaction *transaction);
 
   void ScanKey(const Tuple &key, std::vector<RID> *result, Transaction *transaction) override;
+  void v_ScanKey(const Tuple &key, std::vector<RID> *result, Transaction *transaction);
 
   INDEXITERATOR_TYPE GetBeginIterator();
 

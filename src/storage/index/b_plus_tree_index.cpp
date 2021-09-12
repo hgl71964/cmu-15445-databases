@@ -37,6 +37,18 @@ void BPLUSTREE_INDEX_TYPE::InsertEntry(const Tuple &key, RID rid, Transaction *t
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_INDEX_TYPE::v_InsertEntry(const Tuple &key, RID rid, Transaction *transaction) {
+  // construct insert index key
+  KeyType index_key;
+  if (sizeof(index_key.data_) < key.GetLength()) {
+    LOG_ERROR("index_key %ld key %d ", sizeof(index_key.data_), key.GetLength());
+  }
+  index_key.SetFromKey(key);
+  auto ok = container_.Insert(index_key, rid, transaction);
+  LOG_INFO("insert %d", ok);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_INDEX_TYPE::DeleteEntry(const Tuple &key, RID rid, Transaction *transaction) {
   // construct delete index key
   // LOG_INFO("DeleteEntry");
@@ -50,6 +62,12 @@ void BPLUSTREE_INDEX_TYPE::DeleteEntry(const Tuple &key, RID rid, Transaction *t
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_INDEX_TYPE::v_DeleteEntry(const Tuple &key, RID rid, Transaction *transaction) {
+  LOG_INFO("del %s %d", key.GetRid().ToString().c_str(), key.GetLength());
+  DeleteEntry(key, rid, transaction);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_INDEX_TYPE::ScanKey(const Tuple &key, std::vector<RID> *result, Transaction *transaction) {
   // construct scan index key
   // LOG_INFO("ScanKey");
@@ -60,6 +78,19 @@ void BPLUSTREE_INDEX_TYPE::ScanKey(const Tuple &key, std::vector<RID> *result, T
   index_key.SetFromKey(key);
 
   container_.GetValue(index_key, result, transaction);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_INDEX_TYPE::v_ScanKey(const Tuple &key, std::vector<RID> *result, Transaction *transaction) {
+  LOG_INFO("scan %s %d", key.GetRid().ToString().c_str(), key.GetLength());
+  KeyType index_key;
+  if (sizeof(index_key.data_) < key.GetLength()) {
+    LOG_ERROR("index_key %ld key %d ", sizeof(index_key.data_), key.GetLength());
+  }
+  index_key.SetFromKey(key);
+
+  auto ok = container_.GetValue(index_key, result, transaction);
+  LOG_INFO("%s %d", result->at(0).ToString().c_str(), ok);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
