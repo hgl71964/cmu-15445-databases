@@ -37,7 +37,7 @@ bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     if (ok) {
       for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(table_info_->name_)) {
         auto *tree_index =
-            dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
+            dynamic_cast<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>> *>(index_info->index_.get());
         tree_index->DeleteEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
       }
     }

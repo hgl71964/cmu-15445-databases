@@ -38,15 +38,11 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
 
     // update into index if necessary
     if (ok) {
-      try {
-        for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(table_info_->name_)) {
-          auto *tree_index =
-              dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
-          tree_index->DeleteEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
-          tree_index->InsertEntry(updated_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
-        }
-      } catch (...) {
-        // LOG_INFO("no index for table: %s", table_info_->name_.c_str());
+      for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(table_info_->name_)) {
+        auto *tree_index =
+            dynamic_cast<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>> *>(index_info->index_.get());
+        tree_index->DeleteEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
+        tree_index->InsertEntry(updated_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
       }
     }
     return true;
