@@ -199,7 +199,7 @@ TEST_F(ExecutorTest, SimpleIndexScanTest) {
 
   // iterate tree_index and print
   auto *tree_idx =
-      reinterpret_cast<BPlusTreeIndex<GenericKey<16>, RID, GenericComparator<16>> *>(idx_info->index_.get());
+      reinterpret_cast<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>> *>(idx_info->index_.get());
   auto itr = tree_idx->GetBeginIterator();
   auto end = tree_idx->GetEndIterator();
   int c = 0;
@@ -207,6 +207,7 @@ TEST_F(ExecutorTest, SimpleIndexScanTest) {
     // auto mappingtype = *itr;
     // auto rid = mappingtype.second;
     // std::cout << rid.GetPageId() << rid.GetSlotNum() << std::endl;
+    std::cout << c << std::endl;
     c++;
     ++itr;
   }
@@ -360,7 +361,6 @@ TEST_F(ExecutorTest, SimpleSelectInsertTest) {
 
 // NOLINTNEXTLINE
 TEST_F(ExecutorTest, SimpleRawInsertWithIndexTest) {
-  stall();
   // INSERT INTO empty_table2 VALUES (100, 10), (101, 11), (102, 12)
   // Create Values to insert
   std::vector<Value> val1{ValueFactory::GetIntegerValue(100), ValueFactory::GetIntegerValue(10)};

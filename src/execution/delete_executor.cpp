@@ -35,20 +35,10 @@ bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
 
     // update into index if necessary
     if (ok) {
-      try {
-        for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(table_info_->name_)) {
-          if (table_info_->name_ == "test_1") {
-            auto *tree_index =
-                dynamic_cast<BPlusTreeIndex<GenericKey<16>, RID, GenericComparator<16>> *>(index_info->index_.get());
-            tree_index->DeleteEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
-          } else {
-            auto *tree_index =
-                dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
-            tree_index->DeleteEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
-          }
-        }
-      } catch (...) {
-        // LOG_INFO("no index for table: %s", table_info_->name_.c_str());
+      for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(table_info_->name_)) {
+        auto *tree_index =
+            dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
+        tree_index->DeleteEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
       }
     }
     return true;

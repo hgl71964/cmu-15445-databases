@@ -42,14 +42,10 @@ bool InsertExecutor::direct_insert() {
       tbl_meta_->table_->InsertTuple(tmp_tuple, &tmp_rid, GetExecutorContext()->GetTransaction());
 
       // insert into index if necessary
-      try {
-        for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(tbl_meta_->name_)) {
-          auto *tree_index =
-              dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
-          tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
-        }
-      } catch (...) {
-        // LOG_INFO("no index for table: %s", tbl_meta_->name_.c_str());
+      for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(tbl_meta_->name_)) {
+        auto *tree_index =
+            dynamic_cast<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>> *>(index_info->index_.get());
+        tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
       }
     }
     // mark inserted
@@ -74,14 +70,10 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     tbl_meta_->table_->InsertTuple(tmp_tuple, &tmp_rid, GetExecutorContext()->GetTransaction());
 
     // insert into index if necessary
-    try {
-      for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(tbl_meta_->name_)) {
-        auto *tree_index =
-            dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
-        tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
-      }
-    } catch (...) {
-      // LOG_INFO("no index for table: %s", tbl_meta_->name_.c_str());
+    for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(tbl_meta_->name_)) {
+      auto *tree_index =
+          dynamic_cast<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>> *>(index_info->index_.get());
+      tree_index->InsertEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
     }
     return true;
   }

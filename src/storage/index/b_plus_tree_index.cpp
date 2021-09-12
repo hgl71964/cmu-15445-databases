@@ -26,7 +26,7 @@ INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_INDEX_TYPE::InsertEntry(const Tuple &key, RID rid, Transaction *transaction) {
   // construct insert index key
   KeyType index_key;
-  if (sizeof(index_key.data_) > key.GetLength()) {
+  if (sizeof(index_key.data_) < key.GetLength()) {
     LOG_ERROR("index_key %ld key %d ", sizeof(index_key.data_), key.GetLength());
   }
   index_key.SetFromKey(key);
@@ -41,7 +41,7 @@ void BPLUSTREE_INDEX_TYPE::DeleteEntry(const Tuple &key, RID rid, Transaction *t
   // construct delete index key
   // LOG_INFO("DeleteEntry");
   KeyType index_key;
-  if (sizeof(index_key.data_) > key.GetLength()) {
+  if (sizeof(index_key.data_) < key.GetLength()) {
     LOG_ERROR("index_key %ld key %d ", sizeof(index_key.data_), key.GetLength());
   }
   index_key.SetFromKey(key);
@@ -54,7 +54,7 @@ void BPLUSTREE_INDEX_TYPE::ScanKey(const Tuple &key, std::vector<RID> *result, T
   // construct scan index key
   // LOG_INFO("ScanKey");
   KeyType index_key;
-  if (sizeof(index_key.data_) > key.GetLength()) {
+  if (sizeof(index_key.data_) < key.GetLength()) {
     LOG_ERROR("index_key %ld key %d ", sizeof(index_key.data_), key.GetLength());
   }
   index_key.SetFromKey(key);
