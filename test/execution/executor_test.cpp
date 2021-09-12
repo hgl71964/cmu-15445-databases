@@ -205,10 +205,6 @@ TEST_F(ExecutorTest, SimpleIndexScanTest) {
   auto end = tree_idx->GetEndIterator();
   int c = 0;
   while (itr != end) {
-    // auto mappingtype = *itr;
-    // auto rid = mappingtype.second;
-    // std::cout << rid.GetPageId() << rid.GetSlotNum() << std::endl;
-    std::cout << c << std::endl;
     c++;
     ++itr;
   }

@@ -143,9 +143,10 @@ class Catalog {
     while (itr != end) {
       auto tmp_rid = itr->GetRid();
       auto tmp_tuple = *itr;
-
       idx->InsertEntry(tmp_tuple, tmp_rid, txn);  // insert to index
-      ++itr;                                      // incr
+      // auto index_K_tmp = tmp_tuple.KeyFromTuple(schema, key_schema, key_attrs);
+      // idx->InsertEntry(index_K_tmp, tmp_rid, txn);  // insert to index
+      ++itr;                                        // incr
     }
     indexes_[idx_oid] =
         std::make_unique<IndexInfo>(key_schema, index_name, std::move(idx), idx_oid, table_name, keysize);
