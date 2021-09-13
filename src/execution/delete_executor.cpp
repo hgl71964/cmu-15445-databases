@@ -39,13 +39,11 @@ bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     // update into index if necessary
     if (ok) {
       for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(table_info_->name_)) {
-        auto *tree_index =
-            dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
         auto index_K_tmp =
-            tmp_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, tree_index->GetKeyAttrs());
+            tmp_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
 
-        LOG_INFO("index_key %d key %d ", index_K_tmp.GetLength(), tmp_tuple.GetLength());
-        tree_index->DeleteEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
+        // LOG_INFO("index_key %d key %d ", index_K_tmp.GetLength(), tmp_tuple.GetLength());
+        index_info->index_->DeleteEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
       }
     }
     return true;

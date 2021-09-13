@@ -53,7 +53,7 @@ bool IndexScanExecutor::Next(Tuple *tuple, RID *rid) {
     auto *p = plan_->GetPredicate();  // could be nullptr
     if (p == nullptr || plan_->GetPredicate()->Evaluate(&index_key, GetOutputSchema()).GetAs<bool>()) {
       *tuple = index_key;
-      *rid = tmp_rid;  // XXX rid?
+      *rid = tmp_rid;  // XXX rid has no change
       return true;
     }
   }

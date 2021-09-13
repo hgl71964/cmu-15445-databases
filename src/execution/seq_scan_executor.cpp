@@ -51,7 +51,7 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
     auto *p = plan_->GetPredicate();  // could be nullptr
     if (p == nullptr || plan_->GetPredicate()->Evaluate(&new_tuple, GetOutputSchema()).GetAs<bool>()) {
       *tuple = new_tuple;
-      *rid = tmp_tuple.GetRid();  // XXX??
+      *rid = tmp_tuple.GetRid();  // XXX seems ok, outputSchema is changed but RID is the same
       return true;
     }
   }
