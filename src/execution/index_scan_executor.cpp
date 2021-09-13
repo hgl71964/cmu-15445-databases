@@ -21,7 +21,7 @@ IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanP
       tbl_name_(GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->table_name_) {}
 
 void IndexScanExecutor::Init() {
-  auto *tree_index = dynamic_cast<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>> *>(
+  auto *tree_index = dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(
       GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_.get());
   itr_ = tree_index->GetBeginIterator();
   itr_end_ = tree_index->GetEndIterator();
@@ -44,21 +44,16 @@ bool IndexScanExecutor::Next(Tuple *tuple, RID *rid) {
       LOG_DEBUG("fatal index scan");
       throw Exception(ExceptionType::INVALID, "index scan");
     }
-    // auto index_key = tmp_tuple.KeyFromTuple(
-    //     GetExecutorContext()->GetCatalog()->GetTable(tbl_name_)->schema_,
-    //     GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->key_schema_,
-    //     GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_->GetKeyAttrs());
+    auto index_key = tmp_tuple.KeyFromTuple(
+        GetExecutorContext()->GetCatalog()->GetTable(tbl_name_)->schema_,
+        GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->key_schema_,
+        GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_->GetKeyAttrs());
 
     // eval predicate
     auto *p = plan_->GetPredicate();  // could be nullptr
-    if (p == nullptr || plan_->GetPredicate()->Evaluate(&tmp_tuple, GetOutputSchema()).GetAs<bool>()) {
-      *tuple = tmp_tuple;
-      // LOG_DEBUG("%d %d %d %p", tuple->GetValue(GetOutputSchema(),
-      // GetOutputSchema()->GetColIdx("colA")).GetAs<int32_t>(),
-      //          tuple->GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colB")).GetAs<int32_t>(),
-      //          v.GetAs<bool>(),
-      //          tuple);
-      *rid = tmp_rid;
+    if (p == nullptr || plan_->GetPredicate()->Evaluate(&index_key, GetOutputSchema()).GetAs<bool>()) {
+      *tuple = index_key;
+      *rid = tmp_rid;  // XXX rid?
       return true;
     }
   }

@@ -37,40 +37,26 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
 
     // get updated tuple
     Tuple updated_tuple = GenerateUpdatedTuple(tmp_tuple);
-
-    //{
-    //  LOG_INFO("%d %d", tmp_tuple.GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colA")).GetAs<int32_t>(),
-    //           tmp_tuple.GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colB")).GetAs<int32_t>());
-    //  LOG_INFO("%d %d",
-    //           updated_tuple.GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colA")).GetAs<int32_t>(),
-    //           updated_tuple.GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx("colB")).GetAs<int32_t>());
-    //}
-
-    // LOG_INFO("generated %s %d %d", updated_tuple.GetRid().ToString().c_str(), updated_tuple.GetLength(),
-    //          updated_tuple.GetRid().GetPageId());
-    // LOG_INFO("%s", tmp_tuple.GetRid().ToString().c_str());
+    *tuple = updated_tuple;
 
     // update tuple
     bool ok = table_info_->table_->UpdateTuple(updated_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
-
-    // LOG_INFO("updated %s %d", updated_tuple.GetRid().ToString().c_str(), updated_tuple.GetLength());
-    // LOG_INFO("rid %s %d", tmp_rid.ToString().c_str(), ok);
+    // bool ok = table_info_->table_->MarkDelete(tmp_rid, GetExecutorContext()->GetTransaction());
+    // RID ridd;
+    // table_info_->table_->InsertTuple(updated_tuple, &ridd, GetExecutorContext()->GetTransaction());
 
     // update index if necessary
     if (ok) {
-      *tuple = updated_tuple;
       for (auto &index_info : GetExecutorContext()->GetCatalog()->GetTableIndexes(table_info_->name_)) {
         auto *tree_index =
-            dynamic_cast<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>> *>(index_info->index_.get());
+            dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
 
         auto index_K_tmp =
             tmp_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, tree_index->GetKeyAttrs());
         auto index_K =
             updated_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, tree_index->GetKeyAttrs());
 
-        tree_index->DeleteEntry(tmp_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
         tree_index->DeleteEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
-        tree_index->DeleteEntry(index_K, tmp_rid, GetExecutorContext()->GetTransaction());
         tree_index->v_InsertEntry(index_K, tmp_rid, GetExecutorContext()->GetTransaction());
 
         // {
@@ -80,7 +66,7 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
         // }
       }
     }
-    return true;
+    return ok;
   }
   return false;
 }

@@ -37,15 +37,21 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   while (itr_ != itr_end_) {
     // get tuple
     auto tmp_tuple = *itr_;
+    std::vector<Value> res;
+    for (const Column &col : GetOutputSchema()->GetColumns()) {
+      Value val = tmp_tuple.GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx(col.GetName()));
+      res.push_back(val);
+    }
+    Tuple new_tuple(res, GetOutputSchema());
 
     // incr
     ++itr_;
 
     // eval predicate
     auto *p = plan_->GetPredicate();  // could be nullptr
-    if (p == nullptr || plan_->GetPredicate()->Evaluate(&tmp_tuple, GetOutputSchema()).GetAs<bool>()) {
-      *tuple = tmp_tuple;
-      *rid = tmp_tuple.GetRid();
+    if (p == nullptr || plan_->GetPredicate()->Evaluate(&new_tuple, GetOutputSchema()).GetAs<bool>()) {
+      *tuple = new_tuple;
+      *rid = tmp_tuple.GetRid();  // XXX??
       return true;
     }
   }

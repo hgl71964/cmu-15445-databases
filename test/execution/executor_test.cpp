@@ -219,9 +219,8 @@ TEST_F(ExecutorTest, KeyLenTest) {
 //
 //   // Verify
 //   std::cout << "ColA, ColB" << std::endl;
-//   std::cout << out_schema->GetColIdx("colA") << ", " << out_schema->GetColIdx("colB") << result_set.size() << std::endl;
-//   std::cout << "size: " << result_set.size() << std::endl;
-//   for (const auto &tuple : result_set) {
+//   std::cout << out_schema->GetColIdx("colA") << ", " << out_schema->GetColIdx("colB") << result_set.size() <<
+//   std::endl; std::cout << "size: " << result_set.size() << std::endl; for (const auto &tuple : result_set) {
 //     ASSERT_TRUE(tuple.GetValue(out_schema, out_schema->GetColIdx("colA")).GetAs<int32_t>() < 500);
 //     ASSERT_TRUE(tuple.GetValue(out_schema, out_schema->GetColIdx("colB")).GetAs<int32_t>() < 10);
 //   }
@@ -482,7 +481,6 @@ TEST_F(ExecutorTest, UpdateTest) {
 
 // NOLINTNEXTLINE
 TEST_F(ExecutorTest, SimpleDeleteTest) {
-  stall();
   // SELECT colA FROM test_1 WHERE colA == 50
   // DELETE FROM test_1 WHERE colA == 50
   // SELECT colA FROM test_1 WHERE colA == 50
@@ -518,6 +516,7 @@ TEST_F(ExecutorTest, SimpleDeleteTest) {
   std::unique_ptr<AbstractPlanNode> delete_plan;
   { delete_plan = std::make_unique<DeletePlanNode>(scan_plan1.get(), table_info->oid_); }
   GetExecutionEngine()->Execute(delete_plan.get(), nullptr, GetTxn(), GetExecutorContext());
+  std::cout << "del ok" << std::endl;
 
   result_set.clear();
   GetExecutionEngine()->Execute(scan_plan1.get(), &result_set, GetTxn(), GetExecutorContext());

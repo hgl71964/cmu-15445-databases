@@ -128,12 +128,6 @@ class Catalog {
 
     // construct index meta data + index - not sure about hash index
     IndexMetadata *index_metadata = new IndexMetadata(index_name, table_name, &schema, key_attrs);
-    // std::unique_ptr<BPLUSTREE_INDEX_TYPE> idx =
-    //     std::make_unique<BPLUSTREE_INDEX_TYPE>(index_metadata, bpm_);  // will de-alloc index_metadata in destructor
-
-    // hacky fix to pass autograder - the instantiated key length MUST be the same of table key length
-    // std::unique_ptr<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>>> idx =
-    //     std::make_unique<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>>>(index_metadata, bpm_);
     std::unique_ptr<BPLUSTREE_INDEX_TYPE> idx = std::make_unique<BPLUSTREE_INDEX_TYPE>(index_metadata, bpm_);
 
     // populate tree index
@@ -149,25 +143,10 @@ class Catalog {
       idx->InsertEntry(index_K_tmp, tmp_rid, txn);  // insert to index
       ++itr;                                        // incr
     }
-    indexes_[idx_oid] =
-        std::make_unique<IndexInfo>(key_schema, index_name, std::move(idx), idx_oid, table_name, keysize);
-
-    // populate tree index
-    // auto *tbl_meta = GetTable(table_name);
-    // LOG_INFO("tbl name: %s", tbl_meta->name_.c_str());
-    // auto itr = tbl_meta->table_->Begin(txn);
-    // auto end = tbl_meta->table_->End();
-    // while (itr != end) {
-    //   auto tmp_rid = itr->GetRid();
-    //   auto tmp_tuple = *itr;
-
-    //   idx->InsertEntry(tmp_tuple, tmp_rid, txn);  // insert to index
-    //   ++itr;                                      // incr
-    // }
 
     // register
-    // indexes_[idx_oid] =
-    //     std::make_unique<IndexInfo>(key_schema, index_name, std::move(idx), idx_oid, table_name, keysize);
+    indexes_[idx_oid] =
+        std::make_unique<IndexInfo>(key_schema, index_name, std::move(idx), idx_oid, table_name, keysize);
     index_names_[table_name][index_name] = idx_oid;
     return indexes_[idx_oid].get();
   }
