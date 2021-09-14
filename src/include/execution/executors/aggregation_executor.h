@@ -191,7 +191,7 @@ class AggregationExecutor : public AbstractExecutor {
     return {vals};
   }
 
-  std::vector<Value> resemble(std::vector<Value> &v1, std::vector<Value> &v2);
+  std::vector<Value> resemble(const std::vector<Value> &v1, const std::vector<Value> &v2);
 
  private:
   /** The aggregation plan node. */

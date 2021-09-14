@@ -45,7 +45,7 @@ void AggregationExecutor::Init() {
   aht_iterator_ = aht_.Begin();  // update itr
 }
 
-std::vector<Value> AggregationExecutor::resemble(std::vector<Value> &v1, std::vector<Value> &v2) {
+std::vector<Value> AggregationExecutor::resemble(const std::vector<Value> &v1, const std::vector<Value> &v2) {
   std::vector<Value> res;
   for (const Column &col : GetOutputSchema()->GetColumns()) {
     const AbstractExpression *expr = col.GetExpr();  // this is aggregate expression

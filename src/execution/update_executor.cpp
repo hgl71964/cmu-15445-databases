@@ -33,17 +33,12 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     Tuple tmp_tuple = *tuple;
     RID tmp_rid = *rid;
 
-    // LOG_INFO("before %s %d", tmp_tuple.GetRid().ToString().c_str(), tmp_tuple.GetLength());
-
     // get updated tuple
     Tuple updated_tuple = GenerateUpdatedTuple(tmp_tuple);
     *tuple = updated_tuple;
 
     // update tuple
     bool ok = table_info_->table_->UpdateTuple(updated_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
-    // bool ok = table_info_->table_->MarkDelete(tmp_rid, GetExecutorContext()->GetTransaction());
-    // RID ridd;
-    // table_info_->table_->InsertTuple(updated_tuple, &ridd, GetExecutorContext()->GetTransaction());
 
     // update index if necessary
     if (ok) {
@@ -51,6 +46,7 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
         auto *tree_index =
             dynamic_cast<BPlusTreeIndex<GenericKey<8>, RID, GenericComparator<8>> *>(index_info->index_.get());
 
+        // table tuple -> index key
         auto index_K_tmp =
             tmp_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, tree_index->GetKeyAttrs());
         auto index_K =
@@ -58,12 +54,6 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
 
         tree_index->DeleteEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
         tree_index->v_InsertEntry(index_K, tmp_rid, GetExecutorContext()->GetTransaction());
-
-        // {
-        //   std::vector<RID> result;
-        //   result.clear();
-        //   tree_index->v_ScanKey(updated_tuple, &result, GetExecutorContext()->GetTransaction());
-        // }
       }
     }
     return ok;
