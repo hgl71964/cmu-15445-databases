@@ -34,12 +34,15 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   while (itr != table_info_->table_->End()) {
     // get tuple
     auto tmp_tuple = *itr;
+
+    // format output tuple
+    const Schema *schema = GetOutputSchema();
     std::vector<Value> res;
-    for (const Column &col : GetOutputSchema()->GetColumns()) {
-      Value val = tmp_tuple.GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx(col.GetName()));
+    for (const Column &col : schema->GetColumns()) {
+      Value val = tmp_tuple.GetValue(schema, schema->GetColIdx(col.GetName()));
       res.push_back(val);
     }
-    Tuple new_tuple(res, GetOutputSchema());
+    Tuple new_tuple(res, schema);
 
     // incr
     ++itr;
@@ -51,7 +54,7 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
 
     // eval predicate
     auto *p = plan_->GetPredicate();  // could be nullptr
-    if (p == nullptr || plan_->GetPredicate()->Evaluate(&new_tuple, GetOutputSchema()).GetAs<bool>()) {
+    if (p == nullptr || plan_->GetPredicate()->Evaluate(&new_tuple, schema).GetAs<bool>()) {
       *tuple = new_tuple;
       *rid = tmp_tuple.GetRid();  // XXX seems ok, outputSchema is changed but RID is the same
       return true;
