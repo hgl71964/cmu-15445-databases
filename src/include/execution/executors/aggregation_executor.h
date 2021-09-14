@@ -14,6 +14,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -190,13 +191,14 @@ class AggregationExecutor : public AbstractExecutor {
     return {vals};
   }
 
+  std::vector<Value> resemble(std::vector<Value> &v1, std::vector<Value> &v2);
+
  private:
   /** The aggregation plan node. */
   const AggregationPlanNode *plan_;
   /** The child executor whose tuples we are aggregating. */
   std::unique_ptr<AbstractExecutor> child_;
 
-  std::vector<Tuple> child_vec_;
   /** Simple aggregation hash table. */
   SimpleAggregationHashTable aht_;
   /** Simple aggregation hash table iterator. */

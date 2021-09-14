@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include <cstdio>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -644,6 +645,7 @@ TEST_F(ExecutorTest, SimpleGroupByAggregation) {
     ASSERT_EQ(encountered.count(colB), 0);
     encountered.insert(colB);
     // Sanity check: ColB should also be within [0, 10).
+    std::cout << colB << std::endl;
     ASSERT_TRUE(0 <= colB && colB < 10);
 
     std::cout << tuple.GetValue(agg_schema, agg_schema->GetColIdx("countA")).GetAs<int32_t>() << ", "

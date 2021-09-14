@@ -14,6 +14,7 @@
 
 #include "common/logger.h"
 #include "execution/executors/aggregation_executor.h"
+#include "execution/expressions/column_value_expression.h"
 
 namespace bustub {
 
@@ -34,38 +35,39 @@ void AggregationExecutor::Init() {
     Tuple tuple;
     RID rid;
     while (child_->Next(&tuple, &rid)) {
-      child_vec_.push_back(tuple);
+      auto key = MakeKey(&tuple);
+      auto val = MakeVal(&tuple);
+      aht_.InsertCombine(key, val);
     }
   } catch (Exception &e) {
     LOG_DEBUG("AggregationExecutor %s", e.what());
   }
-
-  LOG_INFO("AggregationExecutor %ld ", child_vec_.size());
-
-  // populate hash table
-  for (auto &tpl : child_vec_) {
-    auto *p = &tpl;
-    auto key = MakeKey(p);
-    auto val = MakeVal(p);
-    aht_.InsertCombine(key, val);
-  }
   aht_iterator_ = aht_.Begin();  // update itr
 }
 
+std::vector<Value> AggregationExecutor::resemble(std::vector<Value> &v1, std::vector<Value> &v2) {
+  std::vector<Value> res;
+  for (const Column &col : GetOutputSchema()->GetColumns()) {
+    const AbstractExpression *expr = col.GetExpr();  // this is aggregate expression
+    auto val = expr->EvaluateAggregate(v1, v2);
+    res.push_back(val);
+  }
+  return res;
+}
+
 bool AggregationExecutor::Next(Tuple *tuple, RID *rid) {
-  auto end = aht_.End();
-  while (aht_iterator_ != end) {
+  while (aht_iterator_ != aht_.End()) {
     auto key = aht_iterator_.Key();
     auto val = aht_iterator_.Val();
     ++aht_iterator_;
 
     auto *having = plan_->GetHaving();
     if (having == nullptr || having->EvaluateAggregate(key.group_bys_, val.aggregates_).GetAs<bool>()) {
-      // LOG_INFO("%ld %ld %d", key.group_bys_.size(), val.aggregates_.size(), GetOutputSchema()->GetColumnCount());
-      auto v1 = key.group_bys_;
-      auto v2 = val.aggregates_;
-      v1.insert(v1.end(), v2.begin(), v2.end());
-      *tuple = Tuple(v1, GetOutputSchema());
+      LOG_INFO("%ld %ld %d", key.group_bys_.size(), val.aggregates_.size(), GetOutputSchema()->GetColumnCount());
+      LOG_INFO("%s", GetOutputSchema()->ToString().c_str());
+      auto res = resemble(key.group_bys_, val.aggregates_);
+
+      *tuple = Tuple(res, GetOutputSchema());
       return true;
     }
   }
