@@ -25,34 +25,38 @@ bool NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) {
     populate();
   }
 
+  // get inner schema
+  const auto *out_schema = plan_->OuterTableSchema();
+  const auto *inner_schema = plan_->InnerTableSchema();
+
   while (i < outter_table_tuple_.size()) {
     while (j < inner_table_tuple_.size()) {
       // get tuples
-      auto left = outter_table_tuple_[i];
-      auto right = inner_table_tuple_[j];
-
-      // get inner schema
-      auto schema = GetExecutorContext()->GetCatalog()->GetTable(plan_->GetInnerTableOid())->schema_;
+      auto raw_left = outter_table_tuple_[i];
+      auto raw_right = inner_table_tuple_[j];
+      auto left = format_schema(&raw_left, out_schema);
+      auto right = format_schema(&raw_right, inner_schema);
 
       // incr
       j++;
 
       // verify
       auto *p = plan_->Predicate();
-      if (p == nullptr || p->EvaluateJoin(&left, child_executor_->GetOutputSchema(), &right, nullptr).GetAs<bool>()) {
+      if (p == nullptr || p->EvaluateJoin(&left, out_schema, &right, inner_schema).GetAs<bool>()) {
         // build tuple from left and right
         std::vector<Value> res;
-        for (const Column &col : child_executor_->GetOutputSchema()->GetColumns()) {
-          Value val = left.GetValue(child_executor_->GetOutputSchema(),
-                                    child_executor_->GetOutputSchema()->GetColIdx(col.GetName()));
+        for (const Column &col : out_schema->GetColumns()) {
+          Value val = left.GetValue(out_schema, out_schema->GetColIdx(col.GetName()));
           res.push_back(val);
         }
-        for (const Column &col : schema.GetColumns()) {
-          Value val = right.GetValue(&schema, schema.GetColIdx(col.GetName()));
+        LOG_INFO("outter %ld", res.size());
+        for (const Column &col : inner_schema->GetColumns()) {
+          Value val = right.GetValue(inner_schema, inner_schema->GetColIdx(col.GetName()));
           res.push_back(val);
         }
-        Tuple new_tuple(res, GetOutputSchema());
-        *tuple = new_tuple;
+        LOG_INFO("inner %ld", res.size());
+
+        *tuple = Tuple(res, GetOutputSchema());
         return true;
       }
     }
@@ -72,29 +76,41 @@ void NestIndexJoinExecutor::populate() {
 
   // get all tuple from outter table
   std::vector<Tuple> outter_table_tuple_;
+  std::vector<Tuple> inner_table_tuple_;
+  std::vector<RID> rids;
+  auto *out_schema = plan_->OuterTableSchema();
   try {
     Tuple tuple;
     RID rid;
     while (child_executor_->Next(&tuple, &rid)) {
+      // get outter
       outter_table_tuple_.push_back(tuple);
+
+      // make key
+      rids.clear();
+      auto index_key =
+          tuple.KeyFromTuple(*out_schema, inner_index_info->key_schema_, inner_index_info->index_->GetKeyAttrs());
+      inner_index_info->index_->ScanKey(index_key, &rids, GetExecutorContext()->GetTransaction());
+
+      // get inner tuple
+      Tuple inner_tuple;
+      inner_table_info->table_->GetTuple(rids[0], &inner_tuple, GetExecutorContext()->GetTransaction());
+      inner_table_tuple_.push_back(inner_tuple);
     }
   } catch (Exception &e) {
     LOG_DEBUG("NestIndexJoinExecutor %s", e.what());
   }
 
-  std::vector<Tuple> inner_table_tuple_;
-  std::vector<RID> rids;
-  for (auto &tpl : outter_table_tuple_) {
-    rids.clear();
-    auto index_key = tpl.KeyFromTuple(inner_table_info->schema_, inner_index_info->key_schema_,
-                                      inner_index_info->index_->GetKeyAttrs());
-    inner_index_info->index_->ScanKey(index_key, &rids, GetExecutorContext()->GetTransaction());
+  LOG_INFO("outter tuple: %ld - inner tuple: %ld", outter_table_tuple_.size(), inner_table_tuple_.size());
+}
 
-    // get tuple
-    Tuple inner_tuple;
-    inner_table_info->table_->GetTuple(rids[0], &inner_tuple, GetExecutorContext()->GetTransaction());
-    inner_table_tuple_.push_back(inner_tuple);
+Tuple NestIndexJoinExecutor::format_schema(Tuple *tuple, const Schema *schema) {
+  std::vector<Value> res;
+  for (const Column &col : schema->GetColumns()) {
+    Value val = tuple->GetValue(schema, schema->GetColIdx(col.GetName()));
+    res.push_back(val);
   }
+  return Tuple(res, schema);
 }
 
 }  // namespace bustub

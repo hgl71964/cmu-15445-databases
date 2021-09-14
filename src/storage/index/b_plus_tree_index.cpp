@@ -82,7 +82,6 @@ void BPLUSTREE_INDEX_TYPE::ScanKey(const Tuple &key, std::vector<RID> *result, T
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_INDEX_TYPE::v_ScanKey(const Tuple &key, std::vector<RID> *result, Transaction *transaction) {
-  LOG_INFO("scan %s %d", key.GetRid().ToString().c_str(), key.GetLength());
   KeyType index_key;
   if (sizeof(index_key.data_) < key.GetLength()) {
     LOG_ERROR("index_key %ld key %d ", sizeof(index_key.data_), key.GetLength());
