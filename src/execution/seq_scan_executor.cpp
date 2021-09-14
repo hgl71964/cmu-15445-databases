@@ -17,26 +17,23 @@ namespace bustub {
 SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan)
     : AbstractExecutor(exec_ctx),
       plan_(plan),
-      itr_(GetExecutorContext()
-               ->GetCatalog()
-               ->GetTable(plan_->GetTableOid())
-               ->table_->Begin(GetExecutorContext()->GetTransaction())),
-      itr_end_(GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())->table_->End()) {
-  // auto tbl_oid = plan_->GetTableOid();
-  // auto *tbl_meta = GetExecutorContext()->GetCatalog()->GetTable(tbl_oid);
-  // TableIterator itr = tbl_meta->table_->Begin(GetExecutorContext()->GetTransaction());
-  // TableIterator itr_end = tbl_meta->table_->End();
-}
+      table_info_(GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())),
+      rid_(),
+      done(false) {}
 
 void SeqScanExecutor::Init() {
-  // auto *tbl_meta = GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid());
-  // LOG_DEBUG("name %s %d", tbl_meta->name_.c_str(), tbl_meta->oid_);
+  auto itr = table_info_->table_->Begin(GetExecutorContext()->GetTransaction());
+  rid_ = itr->GetRid();
 }
 
 bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
-  while (itr_ != itr_end_) {
+  if (done) {
+    return false;
+  }
+  auto itr = TableIterator(table_info_->table_.get(), rid_, GetExecutorContext()->GetTransaction());
+  while (itr != table_info_->table_->End()) {
     // get tuple
-    auto tmp_tuple = *itr_;
+    auto tmp_tuple = *itr;
     std::vector<Value> res;
     for (const Column &col : GetOutputSchema()->GetColumns()) {
       Value val = tmp_tuple.GetValue(GetOutputSchema(), GetOutputSchema()->GetColIdx(col.GetName()));
@@ -45,7 +42,12 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
     Tuple new_tuple(res, GetOutputSchema());
 
     // incr
-    ++itr_;
+    ++itr;
+    if (itr == table_info_->table_->End()) {
+      done = true;
+    } else {
+      rid_ = itr->GetRid();
+    }
 
     // eval predicate
     auto *p = plan_->GetPredicate();  // could be nullptr
