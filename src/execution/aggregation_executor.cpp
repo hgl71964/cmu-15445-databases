@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 
+#include "common/logger.h"
 #include "execution/executors/aggregation_executor.h"
 
 namespace bustub {
@@ -38,8 +39,37 @@ void AggregationExecutor::Init() {
   } catch (Exception &e) {
     LOG_DEBUG("AggregationExecutor %s", e.what());
   }
+
+  LOG_INFO("AggregationExecutor %ld ", child_vec_.size());
+
+  // populate hash table
+  for (auto &tpl : child_vec_) {
+    auto *p = &tpl;
+    auto key = MakeKey(p);
+    auto val = MakeVal(p);
+    aht_.InsertCombine(key, val);
+  }
+  aht_iterator_ = aht_.Begin();  // update itr
 }
 
-bool AggregationExecutor::Next(Tuple *tuple, RID *rid) { return false; }
+bool AggregationExecutor::Next(Tuple *tuple, RID *rid) {
+  auto end = aht_.End();
+  while (aht_iterator_ != end) {
+    auto key = aht_iterator_.Key();
+    auto val = aht_iterator_.Val();
+    ++aht_iterator_;
+
+    auto *having = plan_->GetHaving();
+    if (having == nullptr || having->EvaluateAggregate(key.group_bys_, val.aggregates_).GetAs<bool>()) {
+      // LOG_INFO("%ld %ld %d", key.group_bys_.size(), val.aggregates_.size(), GetOutputSchema()->GetColumnCount());
+      auto v1 = key.group_bys_;
+      auto v2 = val.aggregates_;
+      v1.insert(v1.end(), v2.begin(), v2.end());
+      *tuple = Tuple(v1, GetOutputSchema());
+      return true;
+    }
+  }
+  return false;
+}
 
 }  // namespace bustub

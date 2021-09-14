@@ -572,6 +572,7 @@ TEST_F(ExecutorTest, SimpleAggregationTest) {
   std::vector<Tuple> result_set;
   GetExecutionEngine()->Execute(agg_plan.get(), &result_set, GetTxn(), GetExecutorContext());
 
+  std::cout << "res size: " << result_set.size() << std::endl;
   auto countA_val = result_set[0].GetValue(agg_schema, agg_schema->GetColIdx("countA")).GetAs<int32_t>();
   auto sumA_val = result_set[0].GetValue(agg_schema, agg_schema->GetColIdx("sumA")).GetAs<int32_t>();
   auto minA_val = result_set[0].GetValue(agg_schema, agg_schema->GetColIdx("minA")).GetAs<int32_t>();
