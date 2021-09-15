@@ -18,25 +18,29 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
     : AbstractExecutor(exec_ctx),
       plan_(plan),
       table_info_(GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())),
-      rid_(),
       done(false) {}
 
 void SeqScanExecutor::Init() {
+  LOG_INFO("%s", table_info_->name_.c_str());
   auto itr = table_info_->table_->Begin(GetExecutorContext()->GetTransaction());
   rid_ = itr->GetRid();
+
+  LOG_INFO("%s", table_info_->schema_.ToString().c_str());
+  LOG_INFO("%s", GetOutputSchema()->ToString().c_str());
 }
 
 bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   if (done) {
     return false;
   }
+  const Schema *schema = GetOutputSchema();
+
   auto itr = TableIterator(table_info_->table_.get(), rid_, GetExecutorContext()->GetTransaction());
   while (itr != table_info_->table_->End()) {
     // get tuple
     auto tmp_tuple = *itr;
 
     // format output tuple
-    const Schema *schema = GetOutputSchema();
     std::vector<Value> res;
     for (const Column &col : schema->GetColumns()) {
       Value val = tmp_tuple.GetValue(schema, schema->GetColIdx(col.GetName()));

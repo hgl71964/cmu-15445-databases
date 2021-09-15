@@ -51,6 +51,7 @@ class ExecutionEngine {
       // TODO(student): handle exceptions
       LOG_DEBUG("exp %s", e.what());
     }
+    LOG_INFO("res size: %ld", result_set->size());
 
     return true;
   }

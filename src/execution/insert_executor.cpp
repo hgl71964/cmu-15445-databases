@@ -25,8 +25,13 @@ InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *
       inserted_(false) {}
 
 void InsertExecutor::Init() {
+  LOG_INFO("%s", tbl_meta_->name_.c_str());
   if (!plan_->IsRawInsert()) {
     child_executor_->Init();
+  }
+  LOG_INFO("%s", tbl_meta_->schema_.ToString().c_str());
+  if (GetOutputSchema() != nullptr && GetOutputSchema()->GetColumnCount() > 0) {
+    LOG_INFO("%s", GetOutputSchema()->ToString().c_str());
   }
 }
 
