@@ -138,7 +138,7 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
   }
   if (pages_[page_table_[page_id]].GetPinCount() <= 0) {
     LOG_INFO("over-unpin page_id: %d - pid: %d - pin count %d  ", page_id, pages_[page_table_[page_id]].GetPageId(),
-              pages_[page_table_[page_id]].pin_count_);
+             pages_[page_table_[page_id]].pin_count_);
     return false;
   }
 

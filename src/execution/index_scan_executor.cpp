@@ -46,15 +46,15 @@ bool IndexScanExecutor::Next(Tuple *tuple, RID *rid) {
       LOG_DEBUG("fatal index scan");
       throw Exception(ExceptionType::INVALID, "index scan");
     }
-    auto index_key = tmp_tuple.KeyFromTuple(
-        GetExecutorContext()->GetCatalog()->GetTable(tbl_name_)->schema_,
-        GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->key_schema_,
-        GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_->GetKeyAttrs());
+    // auto index_key = tmp_tuple.KeyFromTuple(
+    //     GetExecutorContext()->GetCatalog()->GetTable(tbl_name_)->schema_,
+    //     GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->key_schema_,
+    //     GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_->GetKeyAttrs());
 
     // eval predicate
     auto *p = plan_->GetPredicate();  // could be nullptr
-    if (p == nullptr || plan_->GetPredicate()->Evaluate(&index_key, GetOutputSchema()).GetAs<bool>()) {
-      *tuple = index_key;
+    if (p == nullptr || plan_->GetPredicate()->Evaluate(&tmp_tuple, GetOutputSchema()).GetAs<bool>()) {
+      *tuple = tmp_tuple;
       *rid = tmp_rid;  // XXX rid has no change
       return true;
     }

@@ -48,7 +48,7 @@ INDEXITERATOR_TYPE &INDEXITERATOR_TYPE::operator++() {
     throw Exception(ExceptionType::INVALID, "iterator *");
   }
 
-  // LOG_INFO("%d %d %d", leaf_->GetPageId(), leaf_->GetSize(),index_);
+  LOG_INFO("%d %d %d", leaf_->GetPageId(), leaf_->GetSize(), index_);
   index_++;
   if (index_ >= leaf_->GetSize()) {
     auto next_pid = leaf_->GetNextPageId();

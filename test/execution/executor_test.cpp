@@ -180,21 +180,22 @@ TEST_F(ExecutorTest, SimpleIndexScanTest) {
 
   // index
   std::vector<Column> keys;
-  keys.emplace_back("K", TypeId::INTEGER);
+  keys.emplace_back("colA", TypeId::INTEGER);
 
   Schema key_schema(keys);
   std::string index_name = "k1";
+  const int index_size = 16;
 
-  auto keys_attr = std::vector<uint32_t>{1};
+  auto keys_attr = std::vector<uint32_t>{0};
   size_t keysize = 1;
-  auto *idx_info = GetExecutorContext()->GetCatalog()->CreateIndex<GenericKey<16>, RID, GenericComparator<16>>(
+  auto *idx_info = GetExecutorContext()->GetCatalog()->CreateIndex<GenericKey<index_size>, RID, GenericComparator<index_size>>(
       GetTxn(), index_name, "test_1", schema, key_schema, keys_attr, keysize);
 
   std::cout << "create index info: " << idx_info << std::endl;
 
   // iterate tree_index and print
   auto *tree_idx =
-      reinterpret_cast<BPlusTreeIndex<GenericKey<16>, RID, GenericComparator<16>> *>(idx_info->index_.get());
+      reinterpret_cast<BPlusTreeIndex<GenericKey<index_size>, RID, GenericComparator<index_size>> *>(idx_info->index_.get());
   auto itr = tree_idx->GetBeginIterator();
   auto end = tree_idx->GetEndIterator();
   int c = 0;
