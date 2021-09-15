@@ -26,11 +26,11 @@ void NestIndexJoinExecutor::Init() {
   // populate
   auto inner_table_info = GetExecutorContext()->GetCatalog()->GetTable(plan_->GetInnerTableOid());
   auto inner_index_info = GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexName(), inner_table_info->name_);
-  LOG_INFO("outter %s", plan_->OuterTableSchema()->ToString().c_str());
-  LOG_INFO("inner %s", plan_->InnerTableSchema()->ToString().c_str());
-  LOG_INFO("child schema %s", child_executor_->GetOutputSchema()->ToString().c_str());
-  LOG_INFO("actual inner table %s", inner_table_info->schema_.ToString().c_str());
-  LOG_INFO("actual inner index %s", inner_index_info->key_schema_.ToString().c_str());
+  // LOG_INFO("outter %s", plan_->OuterTableSchema()->ToString().c_str());
+  // LOG_INFO("inner %s", plan_->InnerTableSchema()->ToString().c_str());
+  // LOG_INFO("child schema %s", child_executor_->GetOutputSchema()->ToString().c_str());
+  // LOG_INFO("actual inner table %s", inner_table_info->schema_.ToString().c_str());
+  // LOG_INFO("actual inner index %s", inner_index_info->key_schema_.ToString().c_str());
 
   // get all tuple from outter table
   try {
@@ -95,43 +95,6 @@ bool NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) {
     return true;
   }
   return false;
-
-  // while (i < outter_table_tuple_.size()) {
-  //   while (j < inner_table_tuple_.size()) {
-  //     // get tuples
-  //     auto raw_left = outter_table_tuple_[i];
-  //     auto raw_right = inner_table_tuple_[j];
-  //     auto left = format_schema(&raw_left, child_executor_->GetOutputSchema(), out_schema);
-  //     auto right = format_schema(
-  //         &raw_right, &GetExecutorContext()->GetCatalog()->GetTable(plan_->GetInnerTableOid())->schema_,
-  //         inner_schema);
-
-  //     // incr
-  //     j++;
-
-  //     // verify
-  //     auto *p = plan_->Predicate();
-  //     if (p == nullptr || p->EvaluateJoin(&left, out_schema, &right, inner_schema).GetAs<bool>()) {
-  //       // build tuple from left and right
-  //       std::vector<Value> res;
-  //       for (const Column &col : out_schema->GetColumns()) {
-  //         Value val = left.GetValue(out_schema, out_schema->GetColIdx(col.GetName()));
-  //         res.push_back(val);
-  //       }
-  //       LOG_INFO("outter %ld", res.size());
-  //       for (const Column &col : inner_schema->GetColumns()) {
-  //         Value val = right.GetValue(inner_schema, inner_schema->GetColIdx(col.GetName()));
-  //         res.push_back(val);
-  //       }
-  //       LOG_INFO("inner %ld", res.size());
-
-  //       *tuple = Tuple(res, GetOutputSchema());
-  //       return true;
-  //     }
-  //   }
-  //   j = 0;
-  //   i++;
-  // }
 }
 
 Tuple NestIndexJoinExecutor::format_schema(Tuple *tuple, const Schema *original_schema, const Schema *desire_schema) {
