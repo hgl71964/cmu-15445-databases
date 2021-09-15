@@ -159,67 +159,67 @@ TEST_F(ExecutorTest, KeyLenTest) {
 }
 
 // NOLINTNEXTLINE
-// TEST_F(ExecutorTest, SimpleIndexScanTest) {
-//   // SELECT colA, colB FROM test_1 WHERE colA < 500
-//
-//   // Construct query plan
-//   TableMetadata *table_info = GetExecutorContext()->GetCatalog()->GetTable("test_1");
-//   Schema &schema = table_info->schema_;
-//   auto *colA = MakeColumnValueExpression(schema, 0, "colA");
-//   auto *colB = MakeColumnValueExpression(schema, 0, "colB");
-//   auto *const500 = MakeConstantValueExpression(ValueFactory::GetIntegerValue(500));
-//   auto *predicate = MakeComparisonExpression(colA, const500, ComparisonType::LessThan);
-//   auto *out_schema = MakeOutputSchema({{"colA", colA}, {"colB", colB}});
-//   // TableMetadata *table_info = GetExecutorContext()->GetCatalog()->GetTable("test_2");
-//   // Schema &schema = table_info->schema_;
-//   // auto *colA = MakeColumnValueExpression(schema, 0, "col1");
-//   // auto *colB = MakeColumnValueExpression(schema, 0, "col2");
-//   // auto *const500 = MakeConstantValueExpression(ValueFactory::GetIntegerValue(500));
-//   // auto *predicate = MakeComparisonExpression(colA, const500, ComparisonType::LessThan);
-//   // auto *out_schema = MakeOutputSchema({{"col1", colA}, {"col2", colB}});
-//
-//   // index
-//   std::vector<Column> keys;
-//   keys.emplace_back("K", TypeId::INTEGER);
-//
-//   Schema key_schema(keys);
-//   std::string index_name = "k1";
-//
-//   auto keys_attr = std::vector<uint32_t>{1};
-//   size_t keysize = 1;
-//   auto *idx_info = GetExecutorContext()->GetCatalog()->CreateIndex<GenericKey<16>, RID, GenericComparator<16>>(
-//       GetTxn(), index_name, "test_1", schema, key_schema, keys_attr, keysize);
-//
-//   std::cout << "create index info: " << idx_info << std::endl;
-//
-//   // iterate tree_index and print
-//   auto *tree_idx =
-//       reinterpret_cast<BPlusTreeIndex<GenericKey<32>, RID, GenericComparator<32>> *>(idx_info->index_.get());
-//   auto itr = tree_idx->GetBeginIterator();
-//   auto end = tree_idx->GetEndIterator();
-//   int c = 0;
-//   while (itr != end) {
-//     c++;
-//     ++itr;
-//   }
-//   std::cout << c << std::endl;
-//
-//   // create plan
-//   IndexScanPlanNode plan{out_schema, predicate, idx_info->index_oid_};
-//
-//   // Execute
-//   std::vector<Tuple> result_set;
-//   GetExecutionEngine()->Execute(&plan, &result_set, GetTxn(), GetExecutorContext());
-//
-//   // Verify
-//   std::cout << "ColA, ColB" << std::endl;
-//   std::cout << out_schema->GetColIdx("colA") << ", " << out_schema->GetColIdx("colB") << result_set.size() <<
-//   std::endl; std::cout << "size: " << result_set.size() << std::endl; for (const auto &tuple : result_set) {
-//     ASSERT_TRUE(tuple.GetValue(out_schema, out_schema->GetColIdx("colA")).GetAs<int32_t>() < 500);
-//     ASSERT_TRUE(tuple.GetValue(out_schema, out_schema->GetColIdx("colB")).GetAs<int32_t>() < 10);
-//   }
-//   ASSERT_EQ(result_set.size(), 500);
-// }
+TEST_F(ExecutorTest, SimpleIndexScanTest) {
+  // SELECT colA, colB FROM test_1 WHERE colA < 500
+
+  // Construct query plan
+  TableMetadata *table_info = GetExecutorContext()->GetCatalog()->GetTable("test_1");
+  Schema &schema = table_info->schema_;
+  auto *colA = MakeColumnValueExpression(schema, 0, "colA");
+  auto *colB = MakeColumnValueExpression(schema, 0, "colB");
+  auto *const500 = MakeConstantValueExpression(ValueFactory::GetIntegerValue(500));
+  auto *predicate = MakeComparisonExpression(colA, const500, ComparisonType::LessThan);
+  auto *out_schema = MakeOutputSchema({{"colA", colA}, {"colB", colB}});
+  // TableMetadata *table_info = GetExecutorContext()->GetCatalog()->GetTable("test_2");
+  // Schema &schema = table_info->schema_;
+  // auto *colA = MakeColumnValueExpression(schema, 0, "col1");
+  // auto *colB = MakeColumnValueExpression(schema, 0, "col2");
+  // auto *const500 = MakeConstantValueExpression(ValueFactory::GetIntegerValue(500));
+  // auto *predicate = MakeComparisonExpression(colA, const500, ComparisonType::LessThan);
+  // auto *out_schema = MakeOutputSchema({{"col1", colA}, {"col2", colB}});
+
+  // index
+  std::vector<Column> keys;
+  keys.emplace_back("K", TypeId::INTEGER);
+
+  Schema key_schema(keys);
+  std::string index_name = "k1";
+
+  auto keys_attr = std::vector<uint32_t>{1};
+  size_t keysize = 1;
+  auto *idx_info = GetExecutorContext()->GetCatalog()->CreateIndex<GenericKey<16>, RID, GenericComparator<16>>(
+      GetTxn(), index_name, "test_1", schema, key_schema, keys_attr, keysize);
+
+  std::cout << "create index info: " << idx_info << std::endl;
+
+  // iterate tree_index and print
+  auto *tree_idx =
+      reinterpret_cast<BPlusTreeIndex<GenericKey<16>, RID, GenericComparator<16>> *>(idx_info->index_.get());
+  auto itr = tree_idx->GetBeginIterator();
+  auto end = tree_idx->GetEndIterator();
+  int c = 0;
+  while (itr != end) {
+    c++;
+    ++itr;
+  }
+  std::cout << c << std::endl;
+
+  // create plan
+  IndexScanPlanNode plan{out_schema, predicate, idx_info->index_oid_};
+
+  // Execute
+  std::vector<Tuple> result_set;
+  GetExecutionEngine()->Execute(&plan, &result_set, GetTxn(), GetExecutorContext());
+
+  // Verify
+  std::cout << "ColA, ColB" << std::endl;
+  std::cout << out_schema->GetColIdx("colA") << ", " << out_schema->GetColIdx("colB") << result_set.size() <<
+  std::endl; std::cout << "size: " << result_set.size() << std::endl; for (const auto &tuple : result_set) {
+    ASSERT_TRUE(tuple.GetValue(out_schema, out_schema->GetColIdx("colA")).GetAs<int32_t>() < 500);
+    ASSERT_TRUE(tuple.GetValue(out_schema, out_schema->GetColIdx("colB")).GetAs<int32_t>() < 10);
+  }
+  ASSERT_EQ(result_set.size(), 500);
+}
 
 // NOLINTNEXTLINE
 TEST_F(ExecutorTest, SimpleSeqScanTest) {

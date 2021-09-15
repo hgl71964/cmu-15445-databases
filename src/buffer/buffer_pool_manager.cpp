@@ -133,26 +133,12 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
 
   // does not exist
   if (page_table_.find(page_id) == page_table_.end()) {
-    // LOG_ERROR("unpin page_id: %d", page_id);
+    LOG_ERROR("unpin page_id: %d", page_id);
     return true;
   }
   if (pages_[page_table_[page_id]].GetPinCount() <= 0) {
-    // LOG_INFO("over-unpin page_id: %d - pid: %d - pin count %d  ", page_id, pages_[page_table_[page_id]].GetPageId(),
-    //          pages_[page_table_[page_id]].pin_count_);
-
-    // if (page_table_.find(page_id) != page_table_.end()) {
-    //  LOG_INFO("aggressive gc %ld", page_table_.size());
-    //  auto pid = page_id;
-    //  auto fid = page_table_[pid];
-    //  if (pages_[fid].is_dirty_ || is_dirty) {
-    //    disk_manager_->WritePage(pid, pages_[fid].GetData());
-    //  }
-
-    //  Reset_meta_dataL(fid);
-    //  page_table_.erase(pid);
-    //  free_list_.push_back(fid);
-    //  LOG_INFO("%ld", page_table_.size());
-    //}
+    LOG_INFO("over-unpin page_id: %d - pid: %d - pin count %d  ", page_id, pages_[page_table_[page_id]].GetPageId(),
+              pages_[page_table_[page_id]].pin_count_);
     return false;
   }
 
@@ -166,19 +152,6 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
 
   if (pages_[page_table_[page_id]].GetPinCount() == 0) {
     replacer_->Unpin(page_table_[page_id]);
-
-    // replacer_->Pin(page_table_[page_id]);
-    // if (page_table_.find(page_id) != page_table_.end()) {
-    //  auto pid = page_id;
-    //  auto fid = page_table_[page_id];
-    //  if (pages_[fid].is_dirty_ || is_dirty) {
-    //    disk_manager_->WritePage(page_id, pages_[fid].GetData());
-    //  }
-
-    //  Reset_meta_dataL(fid);
-    //  page_table_.erase(pid);
-    //  free_list_.push_back(fid);
-    //}
   }
 
   return true;
