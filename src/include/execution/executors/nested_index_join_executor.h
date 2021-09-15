@@ -49,7 +49,7 @@ class NestIndexJoinExecutor : public AbstractExecutor {
 
   void populate();
 
-  Tuple format_schema(Tuple *tuple, const Schema *schema);
+  Tuple format_schema(Tuple *tuple, const Schema *original_schema, const Schema *desire_schema);
 
  private:
   /** The nested index join plan node. */

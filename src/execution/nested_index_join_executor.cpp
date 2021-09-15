@@ -19,12 +19,7 @@ NestIndexJoinExecutor::NestIndexJoinExecutor(ExecutorContext *exec_ctx, const Ne
                                              std::unique_ptr<AbstractExecutor> &&child_executor)
     : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)), populated_(false) {}
 
-void NestIndexJoinExecutor::Init() {
-  LOG_INFO("%s", plan_->OuterTableSchema()->ToString().c_str());
-  LOG_INFO("%s", plan_->InnerTableSchema()->ToString().c_str());
-  LOG_INFO("child schema %s", child_executor_->GetOutputSchema()->ToString().c_str());
-  child_executor_->Init();
-}
+void NestIndexJoinExecutor::Init() { child_executor_->Init(); }
 
 bool NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) {
   if (!populated_) {
@@ -40,8 +35,9 @@ bool NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) {
       // get tuples
       auto raw_left = outter_table_tuple_[i];
       auto raw_right = inner_table_tuple_[j];
-      auto left = format_schema(&raw_left, out_schema);
-      auto right = format_schema(&raw_right, inner_schema);
+      auto left = format_schema(&raw_left, child_executor_->GetOutputSchema(), out_schema);
+      auto right = format_schema(
+          &raw_right, &GetExecutorContext()->GetCatalog()->GetTable(plan_->GetInnerTableOid())->schema_, inner_schema);
 
       // incr
       j++;
@@ -79,13 +75,15 @@ void NestIndexJoinExecutor::populate() {
 
   auto inner_table_info = GetExecutorContext()->GetCatalog()->GetTable(plan_->GetInnerTableOid());
   auto inner_index_info = GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexName(), inner_table_info->name_);
-  LOG_INFO("inner table %s", inner_table_info->schema_.ToString().c_str());
+  LOG_INFO("outter %s", plan_->OuterTableSchema()->ToString().c_str());
+  LOG_INFO("inner %s", plan_->InnerTableSchema()->ToString().c_str());
+  LOG_INFO("child schema %s", child_executor_->GetOutputSchema()->ToString().c_str());
+  LOG_INFO("actual inner table %s", inner_table_info->schema_.ToString().c_str());
+  LOG_INFO("actual inner index %s", inner_index_info->key_schema_.ToString().c_str());
 
   // get all tuple from outter table
   std::vector<Tuple> outter_table_tuple_;
   std::vector<Tuple> inner_table_tuple_;
-  std::vector<RID> rids;
-  auto *out_schema = plan_->OuterTableSchema();
   try {
     Tuple tuple;
     RID rid;
@@ -94,10 +92,15 @@ void NestIndexJoinExecutor::populate() {
       outter_table_tuple_.push_back(tuple);
 
       // make key
-      rids.clear();
-      auto index_key =
-          tuple.KeyFromTuple(*out_schema, inner_index_info->key_schema_, inner_index_info->index_->GetKeyAttrs());
+      std::vector<RID> rids;
+      auto index_key = tuple.KeyFromTuple(*child_executor_->GetOutputSchema(), inner_index_info->key_schema_,
+                                          inner_index_info->index_->GetKeyAttrs());
       inner_index_info->index_->ScanKey(index_key, &rids, GetExecutorContext()->GetTransaction());
+
+      // rids can be empty?? XXX
+      if (rids.empty()) {
+        continue;
+      }
 
       // get inner tuple
       Tuple inner_tuple;
@@ -107,17 +110,16 @@ void NestIndexJoinExecutor::populate() {
   } catch (Exception &e) {
     LOG_DEBUG("NestIndexJoinExecutor %s", e.what());
   }
-
   LOG_INFO("outter tuple: %ld - inner tuple: %ld", outter_table_tuple_.size(), inner_table_tuple_.size());
 }
 
-Tuple NestIndexJoinExecutor::format_schema(Tuple *tuple, const Schema *schema) {
+Tuple NestIndexJoinExecutor::format_schema(Tuple *tuple, const Schema *original_schema, const Schema *desire_schema) {
   std::vector<Value> res;
-  for (const Column &col : schema->GetColumns()) {
-    Value val = tuple->GetValue(schema, schema->GetColIdx(col.GetName()));
+  for (const Column &col : desire_schema->GetColumns()) {
+    Value val = tuple->GetValue(original_schema, original_schema->GetColIdx(col.GetName()));
     res.push_back(val);
   }
-  return Tuple(res, schema);
+  return Tuple(res, desire_schema);
 }
 
 }  // namespace bustub
