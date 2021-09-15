@@ -43,8 +43,8 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
     // format output tuple
     std::vector<Value> res;
     for (const Column &col : schema->GetColumns()) {
-      // Value val = tmp_tuple.GetValue(schema, schema->GetColIdx(col.GetName()));
-      Value val = tmp_tuple.GetValue(&table_info_->schema_, table_info_->schema_.GetColIdx(col.GetName()));
+      Value val = tmp_tuple.GetValue(schema, schema->GetColIdx(col.GetName()));  // XXX not sure if general enough
+      // Value val = tmp_tuple.GetValue(&table_info_->schema_, table_info_->schema_.GetColIdx(col.GetName()));
       res.push_back(val);
     }
     Tuple new_tuple(res, schema);

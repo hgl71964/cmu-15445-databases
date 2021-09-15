@@ -47,17 +47,13 @@ class NestIndexJoinExecutor : public AbstractExecutor {
 
   bool Next(Tuple *tuple, RID *rid) override;
 
-  void populate();
-
   Tuple format_schema(Tuple *tuple, const Schema *original_schema, const Schema *desire_schema);
 
  private:
   /** The nested index join plan node. */
   const NestedIndexJoinPlanNode *plan_;
   std::unique_ptr<AbstractExecutor> child_executor_;
-  bool populated_;
   size_t i;
-  size_t j;
   std::vector<Tuple> outter_table_tuple_;
   std::vector<Tuple> inner_table_tuple_;
 };
