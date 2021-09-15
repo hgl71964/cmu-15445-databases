@@ -33,6 +33,17 @@ class IndexIterator {
 
   IndexIterator &operator++();
 
+  IndexIterator &operator=(const IndexIterator &other) {
+    leaf_ = other.leaf_;
+    buffer_pool_manager_ = other.buffer_pool_manager_;
+    index_ = other.index_;
+
+    if (leaf_ != nullptr) {
+      buffer_pool_manager_->FetchPage(leaf_->GetPageId())->RLatch();
+    }
+    return *this;
+  }
+
   bool operator==(const IndexIterator &itr) const {
     if (itr.leaf_ == nullptr && leaf_ == nullptr) {
       return true;

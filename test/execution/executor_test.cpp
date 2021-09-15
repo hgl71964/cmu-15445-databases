@@ -630,5 +630,4 @@ TEST_F(ExecutorTest, SimpleIndexScanTest) {
   ASSERT_EQ(result_set.size(), 500);
 }
 
-
 }  // namespace bustub
