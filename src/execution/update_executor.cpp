@@ -29,7 +29,7 @@ void UpdateExecutor::Init() {
 }
 
 bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
-  if (child_executor_->Next(tuple, rid)) {
+  while (child_executor_->Next(tuple, rid)) {
     Tuple tmp_tuple = *tuple;
     RID tmp_rid = *rid;
 
@@ -56,7 +56,6 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
         tree_index->InsertEntry(index_K, tmp_rid, GetExecutorContext()->GetTransaction());
       }
     }
-    return ok;
   }
   return false;
 }

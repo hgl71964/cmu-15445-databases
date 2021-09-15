@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "execution/executors/nested_index_join_executor.h"
+#include "common/logger.h"
 
 namespace bustub {
 
@@ -18,7 +19,12 @@ NestIndexJoinExecutor::NestIndexJoinExecutor(ExecutorContext *exec_ctx, const Ne
                                              std::unique_ptr<AbstractExecutor> &&child_executor)
     : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)), populated_(false) {}
 
-void NestIndexJoinExecutor::Init() { child_executor_->Init(); }
+void NestIndexJoinExecutor::Init() {
+  LOG_INFO("%s", plan_->OuterTableSchema()->ToString().c_str());
+  LOG_INFO("%s", plan_->InnerTableSchema()->ToString().c_str());
+  LOG_INFO("child schema %s", child_executor_->GetOutputSchema()->ToString().c_str());
+  child_executor_->Init();
+}
 
 bool NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) {
   if (!populated_) {
@@ -73,6 +79,7 @@ void NestIndexJoinExecutor::populate() {
 
   auto inner_table_info = GetExecutorContext()->GetCatalog()->GetTable(plan_->GetInnerTableOid());
   auto inner_index_info = GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexName(), inner_table_info->name_);
+  LOG_INFO("inner table %s", inner_table_info->schema_.ToString().c_str());
 
   // get all tuple from outter table
   std::vector<Tuple> outter_table_tuple_;

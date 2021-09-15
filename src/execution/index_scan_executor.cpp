@@ -25,6 +25,8 @@ void IndexScanExecutor::Init() {
       GetExecutorContext()->GetCatalog()->GetIndex(plan_->GetIndexOid())->index_.get());
   itr_ = tree_index->GetBeginIterator();
   itr_end_ = tree_index->GetEndIterator();
+  LOG_INFO("%s", tbl_name_.c_str());
+  LOG_INFO("%s", GetExecutorContext()->GetCatalog()->GetTable(tbl_name_)->schema_.ToString().c_str());
 }
 
 bool IndexScanExecutor::Next(Tuple *tuple, RID *rid) {

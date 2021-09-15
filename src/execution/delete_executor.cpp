@@ -29,7 +29,7 @@ void DeleteExecutor::Init() {
 }
 
 bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
-  if (child_executor_->Next(tuple, rid)) {
+  while (child_executor_->Next(tuple, rid)) {
     Tuple tmp_tuple = *tuple;
     RID tmp_rid = *rid;
 
@@ -46,7 +46,6 @@ bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
         index_info->index_->DeleteEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
       }
     }
-    return true;
   }
   return false;
 }
