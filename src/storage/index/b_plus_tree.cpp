@@ -295,9 +295,9 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   release_N_unPin(leaf_page_node->GetPageId(), page, transaction,
                   true);  // page, ancestor dirty - del will be addressed
   if (should_delete) {
-    if (page->GetPinCount() != 0) {
-      LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
-    }
+    // if (page->GetPinCount() != 0) {
+    //   LOG_ERROR("%d - %d - %d", page->GetPageId(), page->GetPinCount(), root_page_id_);
+    // }
     buffer_pool_manager_->DeletePage(leaf_page_node->GetPageId());
   }
 }
@@ -485,7 +485,7 @@ INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
   // case 2
   if (old_root_node->IsLeafPage()) {
-    LOG_DEBUG("adj %d - %d - %d", old_root_node->GetPageId(), root_page_id_, old_root_node->GetSize());
+    // LOG_DEBUG("adj %d - %d - %d", old_root_node->GetPageId(), root_page_id_, old_root_node->GetSize());
     bool should_del = (old_root_node->GetSize() == 0);
     if (should_del) {
       root_page_id_ = INVALID_PAGE_ID;
@@ -595,7 +595,7 @@ void BPLUSTREE_TYPE::check_parent(BPlusTreePage *node, Transaction *transaction)
     return;
   }
   if (!is_pid_in_txns(transaction, node->GetParentPageId())) {
-    LOG_ERROR("check parent %d %d", node->GetPageId(), node->GetParentPageId());
+    // LOG_ERROR("check parent %d %d", node->GetPageId(), node->GetParentPageId());
     throw Exception(ExceptionType::INVALID, "check_parent");
   }
 }
@@ -780,9 +780,9 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
     // if in del set, del
     if (transaction->GetDeletedPageSet()->find(pid) != transaction->GetDeletedPageSet()->end()) {
-      if (p->GetPinCount() != 0) {
-        LOG_ERROR("%d - %d - %d", p->GetPageId(), p->GetPinCount(), root_page_id_);
-      }
+      // if (p->GetPinCount() != 0) {
+      //   LOG_ERROR("%d - %d - %d", p->GetPageId(), p->GetPinCount(), root_page_id_);
+      // }
       buffer_pool_manager_->DeletePage(pid);
       // buffer_pool_manager_->info();
       transaction->GetDeletedPageSet()->erase(pid);
@@ -792,17 +792,17 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
   }
 
   // check
-  if (!page_set->empty() || !transaction->GetPageSet()->empty()) {
-    throw Exception(ExceptionType::INVALID, "del");
-  }
-  if (!transaction->GetDeletedPageSet()->empty()) {
-    LOG_DEBUG("fatal - GetDeletedPageSet");
-    auto p = transaction->GetDeletedPageSet();
-    for (auto &i : *p) {
-      LOG_DEBUG("%d", i);
-    }
-    throw Exception(ExceptionType::INVALID, "del");
-  }
+  // if (!page_set->empty() || !transaction->GetPageSet()->empty()) {
+  //   throw Exception(ExceptionType::INVALID, "del");
+  // }
+  // if (!transaction->GetDeletedPageSet()->empty()) {
+  //   LOG_DEBUG("fatal - GetDeletedPageSet");
+  //   auto p = transaction->GetDeletedPageSet();
+  //   for (auto &i : *p) {
+  //     LOG_DEBUG("%d", i);
+  //   }
+  //   throw Exception(ExceptionType::INVALID, "del");
+  // }
 }
 
 /*
@@ -812,7 +812,7 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   // throw Exception(ExceptionType::NOT_IMPLEMENTED, "Implement this for test");
-  LOG_ERROR("only used for checkpoint 1");
+  // LOG_ERROR("only used for checkpoint 1");
 
   // protect root
   if (IsEmpty()) {

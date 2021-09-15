@@ -145,12 +145,6 @@ class ExecutorTest : public ::testing::Test {
   static constexpr uint32_t MAX_VARCHAR_SIZE = 128;
 };
 
-void stall() {
-  int *p = nullptr;
-  int a = *p;
-  std::cout << a << std::endl;
-}
-
 TEST_F(ExecutorTest, KeyLenTest) {
   // std::vector<std::string> tbls{"empty_table", "empty_table2",
   //               "empty_table3", "test_1",  "test_2",   "test_3"};
@@ -162,7 +156,6 @@ TEST_F(ExecutorTest, KeyLenTest) {
       std::cout << "tbl: " << table_info->name_ << "key len: " << itr->GetLength() << std::endl;
     }
   }
-  // stall();
 }
 
 // NOLINTNEXTLINE

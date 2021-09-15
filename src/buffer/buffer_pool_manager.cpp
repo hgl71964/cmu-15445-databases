@@ -70,10 +70,10 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   if (page_table_.find(page_id) != page_table_.end()) {
     frame_id_t frame_id = page_table_[page_id];
 
-    if (pages_[frame_id].GetPageId() != page_id) {
-      LOG_ERROR("FetchPageImpl fatal - %d - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(),
-                page_id, pages_[frame_id].GetPinCount());
-    }
+    // if (pages_[frame_id].GetPageId() != page_id) {
+    //   LOG_ERROR("FetchPageImpl fatal - %d - %d - %d - page_table_ is not up-to-date", pages_[frame_id].GetPageId(),
+    //             page_id, pages_[frame_id].GetPinCount());
+    // }
     replacer_->Pin(frame_id);
     pages_[frame_id].pin_count_ += 1;
 
@@ -82,8 +82,8 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 
   // if all pinned, cannot find replacement
   if (is_all_pin()) {
-    LOG_INFO("all pin");
-    LOG_INFO("all pin %ld - %ld", pool_size_, page_table_.size());
+    // LOG_INFO("all pin");
+    // LOG_INFO("all pin %ld - %ld", pool_size_, page_table_.size());
     return nullptr;
   }
 
@@ -133,12 +133,12 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
 
   // does not exist
   if (page_table_.find(page_id) == page_table_.end()) {
-    LOG_ERROR("unpin page_id: %d", page_id);
+    // LOG_ERROR("unpin page_id: %d", page_id);
     return true;
   }
   if (pages_[page_table_[page_id]].GetPinCount() <= 0) {
-    LOG_INFO("over-unpin page_id: %d - pid: %d - pin count %d  ", page_id, pages_[page_table_[page_id]].GetPageId(),
-             pages_[page_table_[page_id]].pin_count_);
+    // LOG_INFO("over-unpin page_id: %d - pid: %d - pin count %d  ", page_id, pages_[page_table_[page_id]].GetPageId(),
+    //          pages_[page_table_[page_id]].pin_count_);
 
     // if (page_table_.find(page_id) != page_table_.end()) {
     //  LOG_INFO("aggressive gc %ld", page_table_.size());
@@ -189,7 +189,7 @@ bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
   std::scoped_lock<std::mutex> lock(latch_);
 
   // gc();
-  LOG_DEBUG("FlushPageImpl");
+  // LOG_DEBUG("FlushPageImpl");
   // for (auto &it : page_table_) {
   //  auto pid = it.first;
   //  auto frame_id = it.second;
@@ -201,11 +201,11 @@ bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
   //}
 
   if (page_id == INVALID_PAGE_ID) {
-    LOG_ERROR("flush page INVALID_PAGE_ID");
+    // LOG_ERROR("flush page INVALID_PAGE_ID");
     return false;
   }
   if (page_id != pages_[page_table_[page_id]].GetPageId()) {
-    LOG_ERROR("flush page not equal; maybe race");
+    // LOG_ERROR("flush page not equal; maybe race");
     return false;
   }
   if (page_table_.find(page_id) == page_table_.end()) {
@@ -251,8 +251,8 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   // 1.
   if (is_all_pin()) {
-    LOG_INFO("all pin");
-    LOG_INFO("all pin %ld - %ld", pool_size_, page_table_.size());
+    // LOG_INFO("all pin");
+    // LOG_INFO("all pin %ld - %ld", pool_size_, page_table_.size());
     return nullptr;
   }
 
@@ -314,13 +314,13 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
   // 1.
   if (page_table_.find(page_id) == page_table_.end()) {
-    LOG_INFO("bpm - not find - %d", page_id);
+    // LOG_INFO("bpm - not find - %d", page_id);
     return true;
   }
 
   // 2.
   if (pages_[page_table_[page_id]].GetPinCount() > 0) {
-    LOG_DEBUG("try to del page id: %d - but pin_count: %d", page_id, pages_[page_table_[page_id]].pin_count_);
+    // LOG_DEBUG("try to del page id: %d - but pin_count: %d", page_id, pages_[page_table_[page_id]].pin_count_);
     return false;
   }
 
@@ -350,7 +350,7 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
 void BufferPoolManager::FlushAllPagesImpl() {
   // You can do it!
-  LOG_DEBUG("FlushAllPagesImpl");
+  // LOG_DEBUG("FlushAllPagesImpl");
 
   std::scoped_lock<std::mutex> lock(latch_);
   // gc();
