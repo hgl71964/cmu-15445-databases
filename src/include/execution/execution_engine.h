@@ -51,7 +51,11 @@ class ExecutionEngine {
       // TODO(student): handle exceptions
       LOG_DEBUG("exp %s", e.what());
     }
-    LOG_INFO("res size: %ld", result_set->size());
+    if (result_set == nullptr) {
+      LOG_INFO("res size: NULL");
+    } else {
+      LOG_INFO("res size: %ld", result_set->size());
+    }
 
     return true;
   }
