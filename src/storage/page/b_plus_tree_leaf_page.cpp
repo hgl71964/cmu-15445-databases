@@ -201,16 +201,38 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(const KeyType &key, const 
   NOTE: assume the keys are unique
   **/
 
-  int id = -1;
-  auto size = BPlusTreePage::GetSize();
-  for (int i = 0; i < size; i++) {
-    if (comparator(key, array[i].first) == 0) {
-      id = i;
+  int left = 0;
+  int right = BPlusTreePage::GetSize() - 1;
+  int mid;
+  bool found = false;
+  int id;
+
+  while (left + 1 < right) {
+    mid = (left + right) / 2;
+    if (comparator(array[mid].first, key) == 1) {  // array[mid] > key
+      right = mid;
+    } else if (comparator(array[mid].first, key) == -1) {
+      left = mid;
+    } else {
+      id = mid;
+      found = true;
       break;
     }
   }
 
-  if (id != -1) {
+  if (!found) {
+    for (int i = left; i < right + 1; i++) {
+      if (comparator(array[i].first, key) == 0) {  // array[mid] > key
+        id = i;
+        found = true;
+        break;
+      }
+    }
+  }
+
+  auto size = BPlusTreePage::GetSize();
+
+  if (found) {
     for (int i = id; i < size - 1; i++) {
       array[i].first = array[i + 1].first;
       array[i].second = array[i + 1].second;

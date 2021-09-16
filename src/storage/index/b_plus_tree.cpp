@@ -780,11 +780,7 @@ void BPLUSTREE_TYPE::free_ancestor(Transaction *transaction, bool ancestor_dirty
 
     // if in del set, del
     if (transaction->GetDeletedPageSet()->find(pid) != transaction->GetDeletedPageSet()->end()) {
-      // if (p->GetPinCount() != 0) {
-      //   LOG_ERROR("%d - %d - %d", p->GetPageId(), p->GetPinCount(), root_page_id_);
-      // }
       buffer_pool_manager_->DeletePage(pid);
-      // buffer_pool_manager_->info();
       transaction->GetDeletedPageSet()->erase(pid);
     }
     // notice this clears elem in transaction - because page_set is a pointer
