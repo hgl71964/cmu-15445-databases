@@ -89,14 +89,31 @@ const MappingType &B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) {
+  int left = 0;
+  int right = BPlusTreePage::GetSize() - 1;
+  int mid;
   int keyidx = 0;
-  for (int i = 0; i < BPlusTreePage::GetSize(); i++) {
-    if (comparator(array[i].first, key) == -1) {
+
+  while (left + 1 < right) {
+    mid = (left + right) / 2;
+    if (comparator(array[mid].first, key) == 1) {  // array[mid] > key
+      right = mid;
+    } else if (comparator(array[mid].first, key) == -1) {
+      left = mid;
+    } else {
+      throw Exception(ExceptionType::INVALID, "leaf page insert");
+    }
+  }
+
+  keyidx = left;
+  for (int i = left; i < right + 1; i++) {
+    if (comparator(array[i].first, key) == -1) {  // array[mid] > key
       keyidx++;
     } else {
       break;
     }
   }
+
   BPlusTreePage::IncreaseSize(1);
 
   /**
