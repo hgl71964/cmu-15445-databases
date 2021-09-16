@@ -318,6 +318,5 @@ frame_id_t BufferPoolManager::Find_replacementL() {
   }
   return fid;
 }
-}  // namespace bustub
 
 }  // namespace bustub
