@@ -55,17 +55,6 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
-  // gc();
-  // for (auto &it : page_table_) {
-  //  auto pid = it.first;
-  //  auto frame_id = it.second;
-  //  if (pages_[frame_id].GetPageId() != pid) {
-  //    LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //    pages_[frame_id].GetPinCount()); LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size()); throw
-  //    Exception(ExceptionType::INVALID, "bpm check");
-  //  }
-  //}
-
   // 1.1
   if (page_table_.find(page_id) != page_table_.end()) {
     frame_id_t frame_id = page_table_[page_id];
@@ -120,17 +109,6 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
 bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
   std::scoped_lock<std::mutex> lock(latch_);
 
-  // gc();
-  // for (auto &it : page_table_) {
-  //  auto pid = it.first;
-  //  auto frame_id = it.second;
-  //  if (pages_[frame_id].GetPageId() != pid) {
-  //    LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //    pages_[frame_id].GetPinCount()); LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size()); throw
-  //    Exception(ExceptionType::INVALID, "bpm check");
-  //  }
-  //}
-
   // does not exist
   if (page_table_.find(page_id) == page_table_.end()) {
     LOG_ERROR("unpin page_id: %d", page_id);
@@ -160,18 +138,6 @@ bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) {
 bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
   std::scoped_lock<std::mutex> lock(latch_);
-
-  // gc();
-  // LOG_DEBUG("FlushPageImpl");
-  // for (auto &it : page_table_) {
-  //  auto pid = it.first;
-  //  auto frame_id = it.second;
-  //  if (pages_[frame_id].GetPageId() != pid) {
-  //    LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //    pages_[frame_id].GetPinCount()); LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size()); throw
-  //    Exception(ExceptionType::INVALID, "bpm check");
-  //  }
-  //}
 
   if (page_id == INVALID_PAGE_ID) {
     // LOG_ERROR("flush page INVALID_PAGE_ID");
@@ -206,21 +172,6 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
 
   // 0.
   page_id_t new_page_id = disk_manager_->AllocatePage();
-
-  // gc();
-  // for (auto &it : page_table_) {
-  //   auto pid = it.first;
-  //   auto frame_id = it.second;
-  //   if (pages_[frame_id].GetPageId() != pid) {
-  //     LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //     pages_[frame_id].GetPinCount()); LOG_ERROR("check %d %ld - %ld", new_page_id, pool_size_, page_table_.size());
-  //     BPlusTreePage *node = reinterpret_cast<BPlusTreePage *>(pages_[frame_id].GetData());
-
-  //     LOG_ERROR("double check %d - %d - %d - %d", node->GetPageId(), node->GetParentPageId(), node->IsLeafPage(),
-  //               node->GetSize());
-  //     throw Exception(ExceptionType::INVALID, "bpm check");
-  //   }
-  // }
 
   // 1.
   if (is_all_pin()) {
@@ -271,17 +222,6 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
   std::scoped_lock<std::mutex> lock(latch_);
 
-  // gc();
-  // for (auto &it : page_table_) {
-  //  auto pid = it.first;
-  //  auto frame_id = it.second;
-  //  if (pages_[frame_id].GetPageId() != pid) {
-  //    LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //    pages_[frame_id].GetPinCount()); LOG_ERROR("check %ld - %ld", pool_size_, page_table_.size()); throw
-  //    Exception(ExceptionType::INVALID, "bpm check");
-  //  }
-  //}
-
   // 0.
   disk_manager_->DeallocatePage(page_id);
 
@@ -326,16 +266,6 @@ void BufferPoolManager::FlushAllPagesImpl() {
   // LOG_DEBUG("FlushAllPagesImpl");
 
   std::scoped_lock<std::mutex> lock(latch_);
-  // gc();
-  // for (auto &it : page_table_) {
-  //  auto pid = it.first;
-  //  auto frame_id = it.second;
-  //  if (pages_[frame_id].GetPageId() != pid) {
-  //    LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-  //    pages_[frame_id].GetPinCount()); throw Exception(ExceptionType::INVALID, "bpm check");
-  //  }
-  //}
-
   for (size_t i = 0; i < pool_size_; i++) {
     if (pages_[i].GetPageId() == INVALID_PAGE_ID) {
       continue;
@@ -379,6 +309,7 @@ frame_id_t BufferPoolManager::Find_replacementL() {
     auto ok = replacer_->Victim(&fid);
     if (!ok) {
       LOG_ERROR("find replacement replacer not ok");  // XXX
+      throw Exception(ExceptionType::INVALID, "fatal - find replacement");
     }
 
     if (debug_msg) {
@@ -387,66 +318,6 @@ frame_id_t BufferPoolManager::Find_replacementL() {
   }
   return fid;
 }
-void BufferPoolManager::info() {
-  for (auto &it : page_table_) {
-    auto pid = it.first;
-    auto frame_id = it.second;
-    LOG_INFO("bpm info %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
-  }
-}
-void BufferPoolManager::check() {
-  for (auto &it : page_table_) {
-    auto pid = it.first;
-    auto frame_id = it.second;
-    if (pages_[frame_id].GetPageId() != pid) {
-      LOG_ERROR("check %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
-      throw Exception(ExceptionType::INVALID, "bpm check");
-    }
-  }
-}
-void BufferPoolManager::init_gc() {
-  for (auto &it : page_table_) {
-    auto pid = it.first;
-    auto frame_id = it.second;
-    if (pages_[frame_id].GetPageId() != pid) {
-      if (pages_[frame_id].GetPinCount() == 0) {
-        LOG_ERROR("init_gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-                  pages_[frame_id].GetPinCount());
-        Reset_meta_dataL(frame_id);
-        page_table_.erase(pid);
-        free_list_.push_back(frame_id);
-      } else {
-        LOG_ERROR("init_gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id,
-                  pages_[frame_id].GetPinCount());
-      }
-    }
-  }
-}
-void BufferPoolManager::gc() {
-  std::vector<page_id_t> vec;
-  for (auto &it : page_table_) {
-    auto pid = it.first;
-    auto frame_id = it.second;
-    if (pages_[frame_id].GetPageId() != pid) {
-      if (pages_[frame_id].GetPinCount() == 0) {
-        LOG_ERROR("gc %d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
-        vec.push_back(pid);
-      } else {
-        LOG_ERROR("%d - %d - %d - %d", pid, pages_[frame_id].GetPageId(), frame_id, pages_[frame_id].GetPinCount());
-        throw Exception(ExceptionType::INVALID, "gc not ok");
-      }
-    }
-  }
-  for (auto &i : vec) {
-    LOG_ERROR("gc del %ld", page_table_.size());
-    auto pid = i;
-    auto fid = page_table_[pid];
-
-    page_table_.erase(pid);
-    Reset_meta_dataL(fid);
-    free_list_.push_back(fid);
-    LOG_ERROR("gc del %ld", page_table_.size());
-  }
-}
+}  // namespace bustub
 
 }  // namespace bustub
