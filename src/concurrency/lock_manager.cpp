@@ -17,19 +17,98 @@
 
 namespace bustub {
 
+// XXX need global lock in each func?? - or tuple level lock for the map item is fine?
+
 bool LockManager::LockShared(Transaction *txn, const RID &rid) {
+  if (txn->GetState() == TransactionState::ABORTED) {
+    return false;
+  }
+
+  // 1. iso level no need S lock
+  if (txn->GetIsolationLevel() == IsolationLevel::READ_UNCOMMITTED) {
+    return true;  // no S lock
+  }
+
+  // 2. others need S lock - make record - add to txn
+  LockRequest lr(txn->GetTransactionId(), LockMode::SHARED);
   txn->GetSharedLockSet()->emplace(rid);
+
+  // 3. acquire tuple-level lock - this will implicitly 'instantiate' at rid
+  std::unique_lock<std::mutex> tuple_level_lock(rid_lock_[rid]);
+
+  // 4. append to queue
+  lock_table_[rid].request_queue_.push_back(lr);
+  auto *p = &lock_table_[rid].request_queue_.back();
+
+  // 5. wake up loop
+  for (;;) {
+    // see if ok to grantd - if rid does not exist - no iteration
+    bool ok = true;
+    for (auto &item : lock_table_[rid].request_queue_) {
+      if (item.lock_mode_ == LockMode::EXCLUSIVE && item.granted_) {  // if any is X, we cannot share this
+        ok = false;
+        break;
+      }
+    }
+    p->granted_ = ok;
+
+    // sleep if not ok
+    if (ok) {
+      break;
+    }
+    lock_table_[rid].cv_.wait(tuple_level_lock);  // sleep and release - wake up and hold
+  }
   return true;
 }
 
 bool LockManager::LockExclusive(Transaction *txn, const RID &rid) {
+  if (txn->GetState() == TransactionState::ABORTED) {
+    return false;
+  }
+
+  // ALL need X lock ?? XXX
+  // 2. all get X lock - make record - add to txn
+  LockRequest lr(txn->GetTransactionId(), LockMode::EXCLUSIVE);
   txn->GetExclusiveLockSet()->emplace(rid);
+
+  // 3. create tuple-level lock - this will implicitly 'instantiate' at rid
+  std::unique_lock<std::mutex> tuple_level_lock(rid_lock_[rid]);
+
+  // 4. append to queue
+  lock_table_[rid].request_queue_.push_back(lr);
+  auto *p = &lock_table_[rid].request_queue_.back();
+
+  // 5. block until acquire
+  for (;;) {
+    // see if ok to grantd - if rid does not exist - no iteration
+    bool ok = true;
+    for (auto &item : lock_table_[rid].request_queue_) {
+      if (item.granted_) {  // if any is holding, we cannot get this
+        ok = false;
+        break;
+      }
+    }
+    p->granted_ = ok;
+
+    // sleep if not ok
+    if (ok) {
+      break;
+    }
+    lock_table_[rid].cv_.wait(tuple_level_lock);  // sleep and release - wake up and hold
+  }
   return true;
 }
 
 bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
+  if (txn->GetState() == TransactionState::ABORTED) {
+    return false;
+  }
+
+  std::unique_lock<std::mutex> l(latch_);
   txn->GetSharedLockSet()->erase(rid);
   txn->GetExclusiveLockSet()->emplace(rid);
+  // TODO
+
   return true;
 }
 
