@@ -111,7 +111,7 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
   // check if someone if upgrading, abort if true
   if (lock_table_[rid].upgrading_) {
     if (txn->GetState() != TransactionState::ABORTED) {
-      LOG_INFO("upgrade abort check txn id: %d", txn->GetTransactionId());
+      LOG_INFO("abort upgrade %d", txn->GetTransactionId());
     }
     txn->SetState(TransactionState::ABORTED);
     return false;
@@ -148,12 +148,27 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
     }
     lock_table_[rid].cv_.wait(tuple_level_lock);  // sleep and release - wake up and hold
   }
+
+  // if upgrade successful - mark no one is trying to upgrade
+  lock_table_[rid].upgrading_ = false;
   return true;
 }
 
 bool LockManager::Unlock(Transaction *txn, const RID &rid) {
   txn->GetSharedLockSet()->erase(rid);
   txn->GetExclusiveLockSet()->erase(rid);
+
+  // set state to txn?  XXX
+  LOG_INFO("unlock %d", txn->GetTransactionId());
+
+  // gc - del my request
+  queue_gc(rid, txn->GetTransactionId());
+
+  // notify - let others run
+  lock_table_[rid].cv_.notify_all();
+
+  // anything else?
+
   return true;
 }
 
