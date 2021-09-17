@@ -45,6 +45,9 @@ enum class TransactionState { GROWING, SHRINKING, COMMITTED, ABORTED };
 
 /**
  * Transaction isolation level.
+ * READ_UNCOMMITTED - allow dirty reads - no S lock, and X-lock does not block me
+ * READ_COMMITTED - allow unrepeatable reads - standard 2-LP with share lock released immediately
+ * REPEATABLE_READ - only phantom may happen - strict 2-LP
  */
 enum class IsolationLevel { READ_UNCOMMITTED, REPEATABLE_READ, READ_COMMITTED };
 
