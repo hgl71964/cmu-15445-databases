@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "concurrency/lock_manager.h"
+#include "common/logger.h"
 
 #include <utility>
 #include <vector>
@@ -104,11 +105,49 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
     return false;
   }
 
-  std::unique_lock<std::mutex> l(latch_);
+  // tuple-level lock
+  std::unique_lock<std::mutex> tuple_level_lock(rid_lock_[rid]);
+
+  // check if someone if upgrading, abort if true
+  if (lock_table_[rid].upgrading_) {
+    if (txn->GetState() != TransactionState::ABORTED) {
+      LOG_INFO("upgrade abort check txn id: %d", txn->GetTransactionId());
+    }
+    txn->SetState(TransactionState::ABORTED);
+    return false;
+  }
+  lock_table_[rid].upgrading_ = true;
+
+  // start upgrade
   txn->GetSharedLockSet()->erase(rid);
   txn->GetExclusiveLockSet()->emplace(rid);
-  // TODO
+  LockRequest lr(txn->GetTransactionId(), LockMode::EXCLUSIVE);
 
+  // erase old request in queue - if granted unlock ?? FIXME
+  queue_gc(rid, txn->GetTransactionId());
+
+  // 4. append to queue
+  lock_table_[rid].request_queue_.push_back(lr);
+  auto *p = &lock_table_[rid].request_queue_.back();
+
+  // 5. block until acquire
+  for (;;) {
+    // see if ok to grantd - if rid does not exist - no iteration
+    bool ok = true;
+    for (auto &item : lock_table_[rid].request_queue_) {
+      if (item.granted_) {  // if any is holding, we cannot get this
+        ok = false;
+        break;
+      }
+    }
+    p->granted_ = ok;
+
+    // sleep if not ok
+    if (ok) {
+      break;
+    }
+    lock_table_[rid].cv_.wait(tuple_level_lock);  // sleep and release - wake up and hold
+  }
   return true;
 }
 
@@ -133,6 +172,15 @@ void LockManager::RunCycleDetection() {
       std::unique_lock<std::mutex> l(latch_);
       // TODO(student): remove the continue and add your cycle detection and abort code here
       continue;
+    }
+  }
+}
+
+void LockManager::queue_gc(const RID &rid, txn_id_t txn_id) {
+  for (auto itr = lock_table_[rid].request_queue_.cbegin(); itr != lock_table_[rid].request_queue_.cend(); ++itr) {
+    if (itr->txn_id_ == txn_id) {
+      lock_table_[rid].request_queue_.erase(itr);
+      break;
     }
   }
 }

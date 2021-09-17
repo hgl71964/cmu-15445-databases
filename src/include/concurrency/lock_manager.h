@@ -131,6 +131,9 @@ class LockManager {
   /** Runs cycle detection in the background. */
   void RunCycleDetection();
 
+  /** self */
+  void queue_gc(const RID &rid, txn_id_t txn_id);
+
  private:
   std::mutex latch_;
   std::atomic<bool> enable_cycle_detection_;
@@ -143,6 +146,9 @@ class LockManager {
 
   // tuple-level lock
   std::unordered_map<RID, std::mutex> rid_lock_;
+
+  // for erase element
+  // std::unordered_map<RID, std::unordered_map<txn_id_t, >> rid_lock_;
 };
 
 }  // namespace bustub
