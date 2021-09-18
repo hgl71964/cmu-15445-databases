@@ -258,7 +258,7 @@ void LockManager::queue_gcL(const RID &rid, txn_id_t txn_id) {
   }
 
   // maintain valid RID set
-  if (lock_table_[rid].request_queue_.size() == 0) {
+  if (lock_table_[rid].request_queue_.empty()) {
     rid_set_.erase(rid);
   }
 }
