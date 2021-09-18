@@ -190,9 +190,11 @@ bool LockManager::Unlock(Transaction *txn, const RID &rid) {
   }
   // LOG_INFO("unlock %d", txn->GetTransactionId());
 
+  rid_lock_[rid].lock();
   latch_.lock();
   queue_gcL(rid, txn->GetTransactionId());  // gc - del my request
   latch_.unlock();
+  rid_lock_[rid].unlock();
 
   // notify - let others run
   lock_table_[rid].cv_.notify_all();

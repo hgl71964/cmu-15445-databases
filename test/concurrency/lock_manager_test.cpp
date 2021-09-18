@@ -60,6 +60,7 @@ void BasicTest1() {
       res = lock_mgr.LockShared(txns[txn_id], rid);
       EXPECT_TRUE(res);
       CheckGrowing(txns[txn_id]);
+      // CheckShrinking(txns[txn_id]);
     }
     for (const RID &rid : rids) {
       res = lock_mgr.Unlock(txns[txn_id], rid);
