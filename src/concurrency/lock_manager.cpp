@@ -147,7 +147,7 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
   latch_.lock();
 
   // erase old request in queue - if granted unlock ?? FIXME
-  queue_gc(rid, txn->GetTransactionId());
+  queue_gcL(rid, txn->GetTransactionId());
 
   // 4. append to queue
   lock_table_[rid].request_queue_.push_back(lr);
@@ -190,8 +190,9 @@ bool LockManager::Unlock(Transaction *txn, const RID &rid) {
   }
   // LOG_INFO("unlock %d", txn->GetTransactionId());
 
-  // gc - del my request
-  queue_gc(rid, txn->GetTransactionId());
+  latch_.lock();
+  queue_gcL(rid, txn->GetTransactionId());  // gc - del my request
+  latch_.unlock();
 
   // notify - let others run
   lock_table_[rid].cv_.notify_all();
@@ -224,7 +225,7 @@ void LockManager::RunCycleDetection() {
 /*NOTE: global lock is held */
 void LockManager::build_graphL() {}
 
-void LockManager::queue_gc(const RID &rid, txn_id_t txn_id) {
+void LockManager::queue_gcL(const RID &rid, txn_id_t txn_id) {
   for (auto itr = lock_table_[rid].request_queue_.cbegin(); itr != lock_table_[rid].request_queue_.cend(); ++itr) {
     if (itr->txn_id_ == txn_id) {
       lock_table_[rid].request_queue_.erase(itr);

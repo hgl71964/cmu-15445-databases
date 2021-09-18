@@ -132,7 +132,7 @@ class LockManager {
   void RunCycleDetection();
 
   /** self */
-  void queue_gc(const RID &rid, txn_id_t txn_id);
+  void queue_gcL(const RID &rid, txn_id_t txn_id);
   void build_graphL();
 
  private:
