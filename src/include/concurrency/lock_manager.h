@@ -18,6 +18,7 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -134,6 +135,8 @@ class LockManager {
   /** self */
   void queue_gcL(const RID &rid, txn_id_t txn_id);
   void build_graphL();
+  void lock_all_tuplesL();
+  void unlock_all_tuplesL();
   void print_iso_level(Transaction *txn);
   void print_txn_state(Transaction *txn);
 
@@ -149,6 +152,9 @@ class LockManager {
 
   // tuple-level lock
   std::unordered_map<RID, std::mutex> rid_lock_;
+
+  // record valid RID
+  std::unordered_set<RID> rid_set_;
 };
 
 }  // namespace bustub

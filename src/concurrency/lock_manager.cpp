@@ -47,6 +47,7 @@ bool LockManager::LockShared(Transaction *txn, const RID &rid) {
   // 4. append to queue
   lock_table_[rid].request_queue_.push_back(lr);
   auto *p = &lock_table_[rid].request_queue_.back();
+  rid_set_.insert(rid);
 
   // release global lock
   latch_.unlock();
@@ -93,6 +94,7 @@ bool LockManager::LockExclusive(Transaction *txn, const RID &rid) {
   // 4. append to queue
   lock_table_[rid].request_queue_.push_back(lr);
   auto *p = &lock_table_[rid].request_queue_.back();
+  rid_set_.insert(rid);
 
   // release global lock
   latch_.unlock();
@@ -232,7 +234,20 @@ void LockManager::RunCycleDetection() {
 }
 
 /*NOTE: global lock is held */
-void LockManager::build_graphL() {}
+void LockManager::build_graphL() {
+  lock_all_tuplesL();
+
+  // now have global lock + all valid RID lock
+
+  // build graph
+  // for (auto &item: lock_table_) {
+  //   for (auto &queue_elem : request_queue_) {
+  //     if ()
+  //   }
+  // }
+
+  unlock_all_tuplesL();
+}
 
 void LockManager::queue_gcL(const RID &rid, txn_id_t txn_id) {
   for (auto itr = lock_table_[rid].request_queue_.cbegin(); itr != lock_table_[rid].request_queue_.cend(); ++itr) {
@@ -241,7 +256,25 @@ void LockManager::queue_gcL(const RID &rid, txn_id_t txn_id) {
       break;
     }
   }
+
+  // maintain valid RID set
+  if (lock_table_[rid].request_queue_.size() == 0) {
+    rid_set_.erase(rid);
+  }
 }
+
+void LockManager::lock_all_tuplesL() {
+  for (auto &item : rid_set_) {
+    rid_lock_[item].lock();
+  }
+}
+
+void LockManager::unlock_all_tuplesL() {
+  for (auto &item : rid_set_) {
+    rid_lock_[item].unlock();
+  }
+}
+
 void LockManager::print_txn_state(Transaction *txn) {
   switch (txn->GetState()) {
     case TransactionState::GROWING:
