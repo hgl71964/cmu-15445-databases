@@ -82,10 +82,7 @@ void BasicTest1() {
     delete txns[i];
   }
 }
-TEST(LockManagerTest, BasicTest) {
-  BasicTest1();
-  stall();
-}
+TEST(LockManagerTest, BasicTest) { BasicTest1(); }
 
 void TwoPLTest() {
   LockManager lock_mgr{};
@@ -131,7 +128,10 @@ void TwoPLTest() {
 
   delete txn;
 }
-TEST(LockManagerTest, TwoPLTest) { TwoPLTest(); }
+TEST(LockManagerTest, TwoPLTest) {
+  TwoPLTest();
+  stall();
+}
 
 void UpgradeTest() {
   LockManager lock_mgr{};

@@ -65,7 +65,9 @@ bool LockManager::LockShared(Transaction *txn, const RID &rid) {
 }
 
 bool LockManager::LockExclusive(Transaction *txn, const RID &rid) {
-  if (txn->GetState() == TransactionState::ABORTED) {
+  // txn instantiate as growing state
+  if (txn->GetState() != TransactionState::GROWING) {
+    txn->SetState(TransactionState::ABORTED);
     return false;
   }
 
@@ -162,8 +164,9 @@ bool LockManager::Unlock(Transaction *txn, const RID &rid) {
   txn->GetSharedLockSet()->erase(rid);
   txn->GetExclusiveLockSet()->erase(rid);
 
-  // set state to txn?  XXX
-  LOG_INFO("unlock %d", txn->GetTransactionId());
+  // set state to txn
+  txn->SetState(TransactionState::SHRINKING);
+  // LOG_INFO("unlock %d", txn->GetTransactionId());
 
   // gc - del my request
   queue_gc(rid, txn->GetTransactionId());
