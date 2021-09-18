@@ -134,6 +134,8 @@ class LockManager {
   /** self */
   void queue_gcL(const RID &rid, txn_id_t txn_id);
   void build_graphL();
+  void print_iso_level(Transaction *txn);
+  void print_txn_state(Transaction *txn);
 
  private:
   std::mutex latch_;

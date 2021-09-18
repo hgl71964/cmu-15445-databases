@@ -186,6 +186,8 @@ bool LockManager::Unlock(Transaction *txn, const RID &rid) {
 
   // check if set state to txn
   if (txn->GetState() == TransactionState::GROWING) {
+    print_txn_state(txn);
+    print_iso_level(txn);
     txn->SetState(TransactionState::SHRINKING);
   }
   // LOG_INFO("unlock %d", txn->GetTransactionId());
@@ -233,6 +235,41 @@ void LockManager::queue_gcL(const RID &rid, txn_id_t txn_id) {
       lock_table_[rid].request_queue_.erase(itr);
       break;
     }
+  }
+}
+void print_txn_state(Transaction *txn) {
+  switch (txn->GetState()) {
+    case TransactionState::GROWING:
+      LOG_INFO("GROWING");
+      break;
+    case TransactionState::SHRINKING:
+      LOG_INFO("SHRINKING");
+      break;
+    case TransactionState::COMMITTED:
+      LOG_INFO("COMMITTED");
+      break;
+    case TransactionState::ABORTED:
+      LOG_INFO("ABORTED");
+      break;
+    default:
+      LOG_INFO("fatal print_txn_state");
+      break;
+  }
+}
+void print_iso_level(Transaction *txn) {
+  switch (txn->GetIsolationLevel()) {
+    case IsolationLevel::READ_UNCOMMITTED:
+      LOG_INFO("READ_UNCOMMITTED");
+      break;
+    case IsolationLevel::READ_COMMITTED:
+      LOG_INFO("READ_COMMITTED");
+      break;
+    case IsolationLevel::REPEATABLE_READ:
+      LOG_INFO("REPEATABLE_READ");
+      break;
+    default:
+      LOG_INFO("fatal print_iso_level");
+      break;
   }
 }
 
