@@ -124,6 +124,8 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
     txn->SetState(TransactionState::ABORTED);
     return false;
   }
+  // hold global lock
+  latch_.lock();
 
   // tuple-level lock
   std::unique_lock<std::mutex> tuple_level_lock(rid_lock_[rid]);
@@ -134,6 +136,7 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
       LOG_INFO("abort upgrade %d", txn->GetTransactionId());
     }
     txn->SetState(TransactionState::ABORTED);
+    latch_.unlock();
     return false;
   }
   lock_table_[rid].upgrading_ = true;
@@ -142,9 +145,6 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
   txn->GetSharedLockSet()->erase(rid);
   txn->GetExclusiveLockSet()->emplace(rid);
   LockRequest lr(txn->GetTransactionId(), LockMode::EXCLUSIVE);
-
-  // hold global lock
-  latch_.lock();
 
   // erase old request in queue - if granted unlock ?? FIXME
   queue_gcL(rid, txn->GetTransactionId());
@@ -190,11 +190,11 @@ bool LockManager::Unlock(Transaction *txn, const RID &rid) {
   }
   // LOG_INFO("unlock %d", txn->GetTransactionId());
 
-  rid_lock_[rid].lock();
   latch_.lock();
+  rid_lock_[rid].lock();
   queue_gcL(rid, txn->GetTransactionId());  // gc - del my request
-  latch_.unlock();
   rid_lock_[rid].unlock();
+  latch_.unlock();
 
   // notify - let others run
   lock_table_[rid].cv_.notify_all();
