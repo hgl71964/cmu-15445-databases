@@ -237,7 +237,7 @@ void LockManager::queue_gcL(const RID &rid, txn_id_t txn_id) {
     }
   }
 }
-void print_txn_state(Transaction *txn) {
+void LockManager::print_txn_state(Transaction *txn) {
   switch (txn->GetState()) {
     case TransactionState::GROWING:
       LOG_INFO("GROWING");
@@ -256,7 +256,7 @@ void print_txn_state(Transaction *txn) {
       break;
   }
 }
-void print_iso_level(Transaction *txn) {
+void LockManager::print_iso_level(Transaction *txn) {
   switch (txn->GetIsolationLevel()) {
     case IsolationLevel::READ_UNCOMMITTED:
       LOG_INFO("READ_UNCOMMITTED");
