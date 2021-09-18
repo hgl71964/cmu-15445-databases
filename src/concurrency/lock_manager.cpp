@@ -175,7 +175,7 @@ bool LockManager::Unlock(Transaction *txn, const RID &rid) {
   // notify - let others run
   lock_table_[rid].cv_.notify_all();
 
-  // anything else?
+  // anything else? XXX
 
   return true;
 }
