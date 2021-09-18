@@ -11,10 +11,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "concurrency/lock_manager.h"
-#include "common/logger.h"
-
 #include <utility>
 #include <vector>
+#include "common/logger.h"
 
 namespace bustub {
 
