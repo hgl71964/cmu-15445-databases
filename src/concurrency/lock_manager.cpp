@@ -21,7 +21,9 @@ namespace bustub {
 // XXX need global lock in each func?? - or tuple level lock for the map item is fine?
 
 bool LockManager::LockShared(Transaction *txn, const RID &rid) {
-  if (txn->GetState() == TransactionState::ABORTED) {
+  // txn instantiate as growing state
+  if (txn->GetState() != TransactionState::GROWING) {
+    txn->SetState(TransactionState::ABORTED);
     return false;
   }
 
@@ -101,7 +103,9 @@ bool LockManager::LockExclusive(Transaction *txn, const RID &rid) {
 }
 
 bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
-  if (txn->GetState() == TransactionState::ABORTED) {
+  // txn instantiate as growing state
+  if (txn->GetState() != TransactionState::GROWING) {
+    txn->SetState(TransactionState::ABORTED);
     return false;
   }
 

@@ -31,6 +31,11 @@ void CheckTxnLockSize(Transaction *txn, size_t shared_size, size_t exclusive_siz
   EXPECT_EQ(txn->GetExclusiveLockSet()->size(), exclusive_size);
 }
 
+void stall() {
+  int *p = nullptr;
+  std::cout << *p;
+}
+
 // Basic shared lock test under REPEATABLE_READ
 void BasicTest1() {
   LockManager lock_mgr{};
@@ -77,7 +82,10 @@ void BasicTest1() {
     delete txns[i];
   }
 }
-TEST(LockManagerTest, BasicTest) { BasicTest1(); }
+TEST(LockManagerTest, BasicTest) {
+  BasicTest1();
+  stall();
+}
 
 void TwoPLTest() {
   LockManager lock_mgr{};
