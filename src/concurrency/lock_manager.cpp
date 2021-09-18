@@ -17,7 +17,10 @@
 
 namespace bustub {
 
+// latch_ - global lock protect adding/deleting element in lock_table_
+
 // XXX need global lock in each func?? - or tuple level lock for the map item is fine?
+// XXX transaction check fail should result in an Exception??
 
 bool LockManager::LockShared(Transaction *txn, const RID &rid) {
   // txn instantiate as growing state
@@ -35,12 +38,18 @@ bool LockManager::LockShared(Transaction *txn, const RID &rid) {
   LockRequest lr(txn->GetTransactionId(), LockMode::SHARED);
   txn->GetSharedLockSet()->emplace(rid);
 
+  // hold global lock
+  latch_.lock();
+
   // 3. acquire tuple-level lock - this will implicitly 'instantiate' at rid
   std::unique_lock<std::mutex> tuple_level_lock(rid_lock_[rid]);
 
   // 4. append to queue
   lock_table_[rid].request_queue_.push_back(lr);
   auto *p = &lock_table_[rid].request_queue_.back();
+
+  // release global lock
+  latch_.unlock();
 
   // 5. wake up loop
   for (;;) {
@@ -75,12 +84,18 @@ bool LockManager::LockExclusive(Transaction *txn, const RID &rid) {
   LockRequest lr(txn->GetTransactionId(), LockMode::EXCLUSIVE);
   txn->GetExclusiveLockSet()->emplace(rid);
 
+  // hold global lock
+  latch_.lock();
+
   // 3. create tuple-level lock - this will implicitly 'instantiate' at rid
   std::unique_lock<std::mutex> tuple_level_lock(rid_lock_[rid]);
 
   // 4. append to queue
   lock_table_[rid].request_queue_.push_back(lr);
   auto *p = &lock_table_[rid].request_queue_.back();
+
+  // release global lock
+  latch_.unlock();
 
   // 5. block until acquire
   for (;;) {
@@ -128,12 +143,18 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
   txn->GetExclusiveLockSet()->emplace(rid);
   LockRequest lr(txn->GetTransactionId(), LockMode::EXCLUSIVE);
 
+  // hold global lock
+  latch_.lock();
+
   // erase old request in queue - if granted unlock ?? FIXME
   queue_gc(rid, txn->GetTransactionId());
 
   // 4. append to queue
   lock_table_[rid].request_queue_.push_back(lr);
   auto *p = &lock_table_[rid].request_queue_.back();
+
+  // release global lock
+  latch_.unlock();
 
   // 5. block until acquire
   for (;;) {
@@ -192,12 +213,16 @@ void LockManager::RunCycleDetection() {
   while (enable_cycle_detection_) {
     std::this_thread::sleep_for(cycle_detection_interval);
     {
-      std::unique_lock<std::mutex> l(latch_);
-      // TODO(student): remove the continue and add your cycle detection and abort code here
+      std::unique_lock<std::mutex> lock_manager_global_lock(latch_);
+      // (student): remove the continue and add your cycle detection and abort code here
+      build_graphL();
       continue;
     }
   }
 }
+
+/*NOTE: global lock is held */
+void LockManager::build_graphL() {}
 
 void LockManager::queue_gc(const RID &rid, txn_id_t txn_id) {
   for (auto itr = lock_table_[rid].request_queue_.cbegin(); itr != lock_table_[rid].request_queue_.cend(); ++itr) {

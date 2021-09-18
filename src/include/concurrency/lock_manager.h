@@ -133,6 +133,7 @@ class LockManager {
 
   /** self */
   void queue_gc(const RID &rid, txn_id_t txn_id);
+  void build_graphL();
 
  private:
   std::mutex latch_;
@@ -146,9 +147,6 @@ class LockManager {
 
   // tuple-level lock
   std::unordered_map<RID, std::mutex> rid_lock_;
-
-  // for erase element
-  // std::unordered_map<RID, std::unordered_map<txn_id_t, >> rid_lock_;
 };
 
 }  // namespace bustub
