@@ -162,7 +162,7 @@ void UpgradeTest() {
 }
 TEST(LockManagerTest, UpgradeLockTest) {
   UpgradeTest();
-  stall();
+  // stall();
 }
 
 TEST(LockManagerTest, GraphEdgeTest) {
