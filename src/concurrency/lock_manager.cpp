@@ -164,8 +164,10 @@ bool LockManager::Unlock(Transaction *txn, const RID &rid) {
   txn->GetSharedLockSet()->erase(rid);
   txn->GetExclusiveLockSet()->erase(rid);
 
-  // set state to txn
-  txn->SetState(TransactionState::SHRINKING);
+  // check if set state to txn
+  if (txn->GetState() == TransactionState::GROWING) {
+    txn->SetState(TransactionState::SHRINKING);
+  }
   // LOG_INFO("unlock %d", txn->GetTransactionId());
 
   // gc - del my request

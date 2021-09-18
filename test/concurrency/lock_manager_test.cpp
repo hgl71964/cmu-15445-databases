@@ -2,6 +2,8 @@
  * lock_manager_test.cpp
  */
 
+#include <iostream>
+#include <ostream>
 #include <random>
 #include <thread>  // NOLINT
 
@@ -108,6 +110,7 @@ void TwoPLTest() {
   EXPECT_TRUE(res);
   CheckShrinking(txn);
   CheckTxnLockSize(txn, 0, 1);
+  std::cout << "ok" << std::endl;
 
   try {
     lock_mgr.LockShared(txn, rid0);
@@ -115,11 +118,13 @@ void TwoPLTest() {
     // Size shouldn't change here
     CheckTxnLockSize(txn, 0, 1);
   } catch (TransactionAbortException &e) {
-    // std::cout << e.GetInfo() << std::endl;
+    std::cout << e.GetInfo() << std::endl;
     CheckAborted(txn);
     // Size shouldn't change here
     CheckTxnLockSize(txn, 0, 1);
   }
+
+  std::cout << "last check" << std::endl;
 
   // Need to call txn_mgr's abort
   txn_mgr.Abort(txn);
@@ -128,10 +133,7 @@ void TwoPLTest() {
 
   delete txn;
 }
-TEST(LockManagerTest, TwoPLTest) {
-  TwoPLTest();
-  stall();
-}
+TEST(LockManagerTest, TwoPLTest) { TwoPLTest(); }
 
 void UpgradeTest() {
   LockManager lock_mgr{};
@@ -158,7 +160,10 @@ void UpgradeTest() {
   txn_mgr.Commit(&txn);
   CheckCommitted(&txn);
 }
-TEST(LockManagerTest, UpgradeLockTest) { UpgradeTest(); }
+TEST(LockManagerTest, UpgradeLockTest) {
+  UpgradeTest();
+  stall();
+}
 
 TEST(LockManagerTest, GraphEdgeTest) {
   LockManager lock_mgr{};
