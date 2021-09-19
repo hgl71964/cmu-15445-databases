@@ -136,6 +136,7 @@ class LockManager {
   void queue_gcL(const RID &rid, txn_id_t txn_id);
   void build_graphL();
   void clear_graphL();
+  bool break_all_circleL();
   void lock_all_tuplesL();
   void unlock_all_tuplesL();
   bool dfs(txn_id_t *txn_id, txn_id_t cur, std::unordered_set<txn_id_t> *visited);

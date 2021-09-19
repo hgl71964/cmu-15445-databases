@@ -248,12 +248,9 @@ void LockManager::RemoveEdge(txn_id_t t1, txn_id_t t2) {
  * NOTE: all locks must be taken
  */
 bool LockManager::HasCycle(txn_id_t *txn_id) {
-  if (vector_txn_.empty()) {
-    return false;
-  }
-  LOG_INFO("HasCycle");
-
   std::unordered_set<txn_id_t> visited;
+
+  // once find a txn_id - return true
   for (auto &item : vector_txn_) {
     visited.emplace(item);
     if (dfs(txn_id, item, &visited)) {
@@ -302,6 +299,19 @@ std::vector<std::pair<txn_id_t, txn_id_t>> LockManager::GetEdgeList() {
   return res;
 }
 
+/**
+ * NOTE: each call breaks one circle
+ * @return true = still a circle to break
+ */
+bool LockManager::break_all_circleL() {
+  txn_id_t txn_id;
+  auto has_cycle = HasCycle(&txn_id);
+  if (has_cycle) {
+    transaction_manager::GetTransaction(txn_id)->SetState(TransactionState::ABORTED);
+  }
+  return has_cycle;
+}
+
 void LockManager::RunCycleDetection() {
   while (enable_cycle_detection_) {
     std::this_thread::sleep_for(cycle_detection_interval);
@@ -310,11 +320,16 @@ void LockManager::RunCycleDetection() {
       // (student): remove the continue and add your cycle detection and abort code here
       // continue;
 
-      clear_graphL();
       lock_all_tuplesL();
       // now have global lock + all valid RID lock
 
-      build_graphL();
+      for (;;) {
+        clear_graphL();
+        build_graphL();
+        if (!break_all_circleL()) {
+          break;
+        }
+      }
 
       // TODO(me) find all circle and break
       // see TransactionManager::GetTransaction
