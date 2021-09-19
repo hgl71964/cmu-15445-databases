@@ -217,14 +217,47 @@ void LockManager::AddEdge(txn_id_t t1, txn_id_t t2) {
   if (waits_for_.find(t1) == waits_for_.end()) {
     vector_txn_.push_back(t1);
   }
-  waits_for_[t1].push_back(t2); 
+  waits_for_[t1].push_back(t2);
 }
 
-void LockManager::RemoveEdge(txn_id_t t1, txn_id_t t2) {}
+void LockManager::RemoveEdge(txn_id_t t1, txn_id_t t2) {
+  // erase from wait_for_graph
+  for (auto itr = waits_for_[t1].cbegin(); itr != waits_for_[t1].cend(); ++itr) {
+    if (*itr == t2) {
+      waits_for_[t1].erase(itr);
+      break;
+    }
+  }
 
-bool LockManager::HasCycle(txn_id_t *txn_id) { return false; }
+  // erase from valid txn
+  if (waits_for_[t1].empty()) {
+    for (auto itr = vector_txn_.cbegin(); itr != vector_txn_.cend(); ++itr) {
+      if (*itr == t1) {
+        vector_txn_.erase(itr);
+        break;
+      }
+    }
+  }
+}
 
-std::vector<std::pair<txn_id_t, txn_id_t>> LockManager::GetEdgeList() { return {}; }
+bool LockManager::HasCycle(txn_id_t *txn_id) {
+  if (waits_for_.find(*txn_id) == waits_for_.end()) {
+    return false;
+  }
+
+  // dfs
+  return false;
+}
+
+std::vector<std::pair<txn_id_t, txn_id_t>> LockManager::GetEdgeList() {
+  std::vector<std::pair<txn_id_t, txn_id_t>> res{};
+  for (auto &txn_id : vector_txn_) {
+    for (auto &txn_id_2 : waits_for_[txn_id]) {
+      res.push_back({txn_id, txn_id_2});
+    }
+  }
+  return res;
+}
 
 void LockManager::RunCycleDetection() {
   while (enable_cycle_detection_) {
@@ -265,6 +298,9 @@ void LockManager::build_graphL() {
       }
     }
   }
+
+  // after build graph, make sure ascending order
+  std::sort(vector_txn_.begin(), vector_txn_.end());
 
   unlock_all_tuplesL();
 }
