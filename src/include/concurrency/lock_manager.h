@@ -135,6 +135,7 @@ class LockManager {
   /** self */
   void queue_gcL(const RID &rid, txn_id_t txn_id);
   void build_graphL();
+  void clear_graphL();
   void lock_all_tuplesL();
   void unlock_all_tuplesL();
   void print_iso_level(Transaction *txn);
@@ -149,6 +150,7 @@ class LockManager {
   std::unordered_map<RID, LockRequestQueue> lock_table_;
   /** Waits-for graph representation. */
   std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
+  std::vector<txn_id_t> vector_txn_;
 
   // tuple-level lock
   std::unordered_map<RID, std::mutex> rid_lock_;

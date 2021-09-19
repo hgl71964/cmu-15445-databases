@@ -213,7 +213,12 @@ bool LockManager::Unlock(Transaction *txn, const RID &rid) {
   return true;
 }
 
-void LockManager::AddEdge(txn_id_t t1, txn_id_t t2) {}
+void LockManager::AddEdge(txn_id_t t1, txn_id_t t2) {
+  if (waits_for_.find(t1) == waits_for_.end()) {
+    vector_txn_.push_back(t1);
+  }
+  waits_for_[t1].push_back(t2); 
+}
 
 void LockManager::RemoveEdge(txn_id_t t1, txn_id_t t2) {}
 
@@ -227,26 +232,46 @@ void LockManager::RunCycleDetection() {
     {
       std::unique_lock<std::mutex> lock_manager_global_lock(latch_);
       // (student): remove the continue and add your cycle detection and abort code here
+      // continue;
       build_graphL();
-      continue;
     }
   }
 }
 
 /*NOTE: global lock is held */
 void LockManager::build_graphL() {
+  clear_graphL();
   lock_all_tuplesL();
 
   // now have global lock + all valid RID lock
 
   // build graph
-  // for (auto &item: lock_table_) {
-  //   for (auto &queue_elem : request_queue_) {
-  //     if ()
-  //   }
-  // }
+  for (auto &rid : rid_set_) {
+    // get waiters and holders for this RID
+    std::vector<txn_id_t> holders{};
+    std::vector<txn_id_t> waiters{};
+    for (auto &request : lock_table_[rid].request_queue_) {
+      if (request.granted_) {
+        holders.push_back(request.txn_id_);
+      } else {
+        waiters.push_back(request.txn_id_);
+      }
+    }
+
+    // add edges
+    for (auto &wt : waiters) {
+      for (auto &hd : holders) {
+        AddEdge(wt, hd);
+      }
+    }
+  }
 
   unlock_all_tuplesL();
+}
+
+void LockManager::clear_graphL() {
+  vector_txn_.clear();
+  waits_for_.clear();
 }
 
 void LockManager::queue_gcL(const RID &rid, txn_id_t txn_id) {
