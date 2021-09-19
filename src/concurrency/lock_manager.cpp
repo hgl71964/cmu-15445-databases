@@ -309,6 +309,9 @@ void LockManager::RunCycleDetection() {
 
       build_graphL();
 
+      // TODO find all circle and break
+      // see TransactionManager::GetTransaction
+
       unlock_all_tuplesL();
     }
   }
@@ -321,6 +324,8 @@ void LockManager::build_graphL() {
     std::vector<txn_id_t> holders{};
     std::vector<txn_id_t> waiters{};
     for (auto &request : lock_table_[rid].request_queue_) {
+      // FIME do not add edge for aborted txn
+      // see TransactionManager::GetTransaction
       if (request.granted_) {
         holders.push_back(request.txn_id_);
       } else {
