@@ -251,9 +251,17 @@ bool LockManager::HasCycle(txn_id_t *txn_id) {
   if (vector_txn_.empty()) {
     return false;
   }
+  LOG_INFO("HasCycle");
+
   std::unordered_set<txn_id_t> visited;
-  visited.emplace(vector_txn_[0]);
-  return dfs(txn_id, vector_txn_[0], &visited);
+  for (auto &item : vector_txn_) {
+    visited.emplace(item);
+    if (dfs(txn_id, item, &visited)) {
+      return true;
+    }
+    visited.erase(item);
+  }
+  return false;
 }
 
 bool LockManager::dfs(txn_id_t *txn_id, txn_id_t cur, std::unordered_set<txn_id_t> *visited) {
@@ -261,7 +269,6 @@ bool LockManager::dfs(txn_id_t *txn_id, txn_id_t cur, std::unordered_set<txn_id_
   if (waits_for_.find(cur) == waits_for_.end()) {
     return false;
   }
-  LOG_INFO("cur %d", cur);
 
   // neighbors need from lowest to highest
   std::sort(waits_for_[cur].begin(), waits_for_[cur].end());
@@ -309,7 +316,7 @@ void LockManager::RunCycleDetection() {
 
       build_graphL();
 
-      // TODO find all circle and break
+      // TODO(me) find all circle and break
       // see TransactionManager::GetTransaction
 
       unlock_all_tuplesL();
