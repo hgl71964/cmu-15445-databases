@@ -15,6 +15,7 @@
 #include <vector>
 #include "common/exception.h"
 #include "common/logger.h"
+#include "concurrency/transaction_manager.h"
 
 namespace bustub {
 
@@ -303,11 +304,15 @@ std::vector<std::pair<txn_id_t, txn_id_t>> LockManager::GetEdgeList() {
  * NOTE: each call breaks one circle
  * @return true = still a circle to break
  */
-bool LockManager::break_all_circleL() {
+bool LockManager::break_one_circleL() {
   txn_id_t txn_id;
-  auto has_cycle = HasCycle(&txn_id);
+  bool has_cycle = HasCycle(&txn_id);
   if (has_cycle) {
-    transaction_manager::GetTransaction(txn_id)->SetState(TransactionState::ABORTED);
+    LOG_INFO("break_one_circleL");
+    // TransactionManager::GetTransaction(txn_id)->SetState(TransactionState::ABORTED);
+    TransactionManager::GetTransaction(txn_id)
+    // TODO notify the waiting txn that it is aborted
+    // throw Exception(ExceptionType::INVALID, "abort");
   }
   return has_cycle;
 }
@@ -323,17 +328,15 @@ void LockManager::RunCycleDetection() {
       lock_all_tuplesL();
       // now have global lock + all valid RID lock
 
+      // breaks all circles
       for (;;) {
         clear_graphL();
         build_graphL();
-        if (!break_all_circleL()) {
+        if (!break_one_circleL()) {
           break;
         }
       }
-
-      // TODO(me) find all circle and break
-      // see TransactionManager::GetTransaction
-
+      LOG_INFO("break all");
       unlock_all_tuplesL();
     }
   }
@@ -346,8 +349,10 @@ void LockManager::build_graphL() {
     std::vector<txn_id_t> holders{};
     std::vector<txn_id_t> waiters{};
     for (auto &request : lock_table_[rid].request_queue_) {
-      // FIME do not add edge for aborted txn
-      // see TransactionManager::GetTransaction
+      // XXX only aborted txn is not valid??
+      if (TransactionManager::GetTransaction(request.txn_id_)->GetState() == TransactionState::ABORTED) {
+        continue;
+      }
       if (request.granted_) {
         holders.push_back(request.txn_id_);
       } else {
