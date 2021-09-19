@@ -13,6 +13,7 @@
 #include "concurrency/lock_manager.h"
 #include <utility>
 #include <vector>
+#include "common/exception.h"
 #include "common/logger.h"
 
 namespace bustub {
@@ -214,6 +215,9 @@ bool LockManager::Unlock(Transaction *txn, const RID &rid) {
 }
 
 void LockManager::AddEdge(txn_id_t t1, txn_id_t t2) {
+  if (t1 == t2) {
+    throw Exception(ExceptionType::INVALID, "addEdge");
+  }
   if (waits_for_.find(t1) == waits_for_.end()) {
     vector_txn_.push_back(t1);
   }
@@ -240,21 +244,52 @@ void LockManager::RemoveEdge(txn_id_t t1, txn_id_t t2) {
   }
 }
 
+/**
+ * NOTE: all locks must be taken
+ */
 bool LockManager::HasCycle(txn_id_t *txn_id) {
   if (vector_txn_.empty()) {
     return false;
   }
+  std::unordered_set<txn_id_t> visited;
+  visited.emplace(vector_txn_[0]);
+  return dfs(txn_id, vector_txn_[0], &visited);
+}
 
-  // dfs
-  // auto youngest_txn = vector_txn_[0];
-  return true;
+bool LockManager::dfs(txn_id_t *txn_id, txn_id_t cur, std::unordered_set<txn_id_t> *visited) {
+  // termination
+  if (waits_for_.find(cur) == waits_for_.end()) {
+    return false;
+  }
+  LOG_INFO("cur %d", cur);
+
+  // neighbors need from lowest to highest
+  std::sort(waits_for_[cur].begin(), waits_for_[cur].end());
+  for (auto &item : waits_for_[cur]) {
+    if (visited->find(item) != visited->end()) {
+      LOG_INFO("find %d", item);
+      *txn_id = item;
+      return true;
+    }
+
+    visited->emplace(item);
+    if (dfs(txn_id, item, visited)) {
+      if (item > *txn_id) {
+        LOG_INFO("update %d", item);
+        *txn_id = item;
+      }
+      return true;
+    }
+    visited->erase(item);
+  }
+  return false;
 }
 
 std::vector<std::pair<txn_id_t, txn_id_t>> LockManager::GetEdgeList() {
   std::vector<std::pair<txn_id_t, txn_id_t>> res{};
   for (auto &txn_id : vector_txn_) {
     for (auto &txn_id_2 : waits_for_[txn_id]) {
-      res.push_back({txn_id, txn_id_2});
+      res.emplace_back(std::make_pair(txn_id, txn_id_2));
     }
   }
   return res;
@@ -270,7 +305,6 @@ void LockManager::RunCycleDetection() {
 
       clear_graphL();
       lock_all_tuplesL();
-
       // now have global lock + all valid RID lock
 
       build_graphL();

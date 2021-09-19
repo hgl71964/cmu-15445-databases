@@ -138,6 +138,7 @@ class LockManager {
   void clear_graphL();
   void lock_all_tuplesL();
   void unlock_all_tuplesL();
+  bool dfs(txn_id_t *txn_id, txn_id_t cur, std::unordered_set<txn_id_t> *visited);
   void print_iso_level(Transaction *txn);
   void print_txn_state(Transaction *txn);
 
