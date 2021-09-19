@@ -241,12 +241,13 @@ void LockManager::RemoveEdge(txn_id_t t1, txn_id_t t2) {
 }
 
 bool LockManager::HasCycle(txn_id_t *txn_id) {
-  if (waits_for_.find(*txn_id) == waits_for_.end()) {
+  if (vector_txn_.empty()) {
     return false;
   }
 
   // dfs
-  return false;
+  // auto youngest_txn = vector_txn_[0];
+  return true;
 }
 
 std::vector<std::pair<txn_id_t, txn_id_t>> LockManager::GetEdgeList() {
@@ -266,19 +267,21 @@ void LockManager::RunCycleDetection() {
       std::unique_lock<std::mutex> lock_manager_global_lock(latch_);
       // (student): remove the continue and add your cycle detection and abort code here
       // continue;
+
+      clear_graphL();
+      lock_all_tuplesL();
+
+      // now have global lock + all valid RID lock
+
       build_graphL();
+
+      unlock_all_tuplesL();
     }
   }
 }
 
 /*NOTE: global lock is held */
 void LockManager::build_graphL() {
-  clear_graphL();
-  lock_all_tuplesL();
-
-  // now have global lock + all valid RID lock
-
-  // build graph
   for (auto &rid : rid_set_) {
     // get waiters and holders for this RID
     std::vector<txn_id_t> holders{};
@@ -301,8 +304,6 @@ void LockManager::build_graphL() {
 
   // after build graph, make sure ascending order
   std::sort(vector_txn_.begin(), vector_txn_.end());
-
-  unlock_all_tuplesL();
 }
 
 void LockManager::clear_graphL() {
