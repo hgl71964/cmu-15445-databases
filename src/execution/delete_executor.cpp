@@ -42,6 +42,10 @@ bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
         auto index_K_tmp =
             tmp_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
 
+        // add to index write set - so it can be rollbacked
+        GetExecutorContext()->GetTransaction()->GetIndexWriteSet()->emplace_back(
+            tmp_rid, table_info_->oid_, WType::DELETE, tmp_tuple, index_info->index_oid_,
+            GetExecutorContext()->GetCatalog());
         // LOG_INFO("index_key %d key %d ", index_K_tmp.GetLength(), tmp_tuple.GetLength());
         index_info->index_->DeleteEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
       }
