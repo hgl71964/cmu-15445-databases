@@ -60,7 +60,7 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
   }
   done_ = true;
 
-  // one call and insert all - XXX
+  // one call and insert all
   if (plan_->IsRawInsert()) {
     direct_insert();
     return false;
