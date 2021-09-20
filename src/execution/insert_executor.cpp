@@ -50,6 +50,11 @@ void InsertExecutor::direct_insert() {
       auto index_K_tmp =
           tmp_tuple.KeyFromTuple(tbl_meta_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
       index_info->index_->InsertEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
+
+      // add to index write set - so it can be rollbacked
+      GetExecutorContext()->GetTransaction()->GetIndexWriteSet()->emplace_back(tmp_rid, tbl_meta_->oid_, WType::INSERT,
+                                                                               tmp_tuple, index_info->index_oid_,
+                                                                               GetExecutorContext()->GetCatalog());
     }
   }
 }
@@ -79,6 +84,11 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
       auto index_K_tmp =
           tmp_tuple.KeyFromTuple(tbl_meta_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
       index_info->index_->InsertEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
+
+      // add to index write set - so it can be rollbacked
+      GetExecutorContext()->GetTransaction()->GetIndexWriteSet()->emplace_back(tmp_rid, tbl_meta_->oid_, WType::INSERT,
+                                                                               tmp_tuple, index_info->index_oid_,
+                                                                               GetExecutorContext()->GetCatalog());
     }
   }
   return false;

@@ -54,6 +54,16 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
 
         tree_index->DeleteEntry(index_K_tmp, tmp_rid, GetExecutorContext()->GetTransaction());
         tree_index->InsertEntry(index_K, tmp_rid, GetExecutorContext()->GetTransaction());
+
+        // add to index write set - so it can be rollbacked
+        // GetExecutorContext()->GetTransaction()->GetIndexWriteSet()->emplace_back(
+        //     tmp_rid, table_info_->oid_, WType::UPDATE, updated_tuple, index_info->index_oid_,
+        //     GetExecutorContext()->GetCatalog());
+
+        // add to index write set - so it can be rollbacked
+        // GetExecutorContext()->GetTransaction()->GetIndexWriteSet()->emplace_back(
+        //     tmp_rid, table_info_->oid_, WType::DELETE, tmp_tuple, index_info->index_oid_,
+        //     GetExecutorContext()->GetCatalog());
       }
     }
   }
