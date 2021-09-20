@@ -18,7 +18,7 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
     : AbstractExecutor(exec_ctx),
       plan_(plan),
       table_info_(GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())),
-      done(false) {}
+      done_(false) {}
 
 void SeqScanExecutor::Init() {
   LOG_INFO("%s", table_info_->name_.c_str());
@@ -30,7 +30,7 @@ void SeqScanExecutor::Init() {
 }
 
 bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
-  if (done) {
+  if (done_) {
     return false;
   }
   const Schema *schema = GetOutputSchema();
@@ -52,7 +52,7 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
     // incr
     ++itr;
     if (itr == table_info_->table_->End()) {
-      done = true;
+      done_ = true;
     } else {
       rid_ = itr->GetRid();
     }

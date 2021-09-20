@@ -44,6 +44,6 @@ class SeqScanExecutor : public AbstractExecutor {
   const SeqScanPlanNode *plan_;
   TableMetadata *table_info_;
   RID rid_;
-  bool done;
+  bool done_;
 };
 }  // namespace bustub
