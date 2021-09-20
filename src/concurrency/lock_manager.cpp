@@ -24,6 +24,7 @@ namespace bustub {
 
 bool LockManager::LockShared(Transaction *txn, const RID &rid) {
   // txn instantiate as growing state
+  // LOG_INFO("LockShared: %d", txn->GetTransactionId());
   if (txn->GetState() != TransactionState::GROWING) {
     txn->SetState(TransactionState::ABORTED);
     return false;

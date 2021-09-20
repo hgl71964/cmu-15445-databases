@@ -36,6 +36,12 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
 
     // get updated tuple
     Tuple updated_tuple = GenerateUpdatedTuple(tmp_tuple);
+    // bool get_lock =
+    //     GetExecutorContext()->GetLockManager()->LockUpgrade(GetExecutorContext()->GetTransaction(), tmp_rid);
+    // if (!get_lock) {
+    //   LOG_INFO("get_lock not ok - txn: %d", GetExecutorContext()->GetTransaction()->GetTransactionId());
+    //   return false;
+    // }
     *tuple = updated_tuple;
 
     // update tuple
