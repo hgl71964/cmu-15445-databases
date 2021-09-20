@@ -198,21 +198,19 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
 }
 
 bool LockManager::Unlock(Transaction *txn, const RID &rid) {
-  txn->GetSharedLockSet()->erase(rid);
-  txn->GetExclusiveLockSet()->erase(rid);
-
-  // check if set state to txn
+  // check if txn state ok
   if (txn->GetState() == TransactionState::GROWING) {
     // print_txn_state(txn);
     // print_iso_level(txn);
-    /** XXX not sure why need this condition - it seems 2-LP is done by app logic
+    /** it seems 2-LP is done by app logic
      * NOTE: slide says S lock will released immediately by READ_COMMITTED txn
      */
     if (txn->GetIsolationLevel() != IsolationLevel::READ_COMMITTED) {
       txn->SetState(TransactionState::SHRINKING);
     }
   }
-  // LOG_INFO("unlock %d", txn->GetTransactionId());
+  txn->GetSharedLockSet()->erase(rid);
+  txn->GetExclusiveLockSet()->erase(rid);
 
   latch_.lock();
   rid_lock_[rid].lock();
