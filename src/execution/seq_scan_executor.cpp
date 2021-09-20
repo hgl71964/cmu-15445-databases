@@ -41,6 +41,10 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
 
   auto itr = TableIterator(table_info_->table_.get(), rid_, GetExecutorContext()->GetTransaction());
   while (itr != table_info_->table_->End()) {
+    // LOCK
+    auto lock_rid = itr->GetRid();
+    GetExecutorContext()->GetLockManager()->LockShared(GetExecutorContext()->GetTransaction(), lock_rid);
+
     // get tuple
     auto tmp_tuple = *itr;
 
