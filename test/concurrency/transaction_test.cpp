@@ -4,12 +4,12 @@
 
 #include <atomic>
 #include <cstdio>
+#include <iostream>
 #include <memory>
 #include <random>
 #include <string>
 #include <utility>
 #include <vector>
-#include <iostream>
 
 #include "buffer/buffer_pool_manager.h"
 #include "catalog/table_generator.h"
@@ -159,10 +159,10 @@ TEST_F(TransactionTest, SimpleInsertRollbackTest) {
   // txn1: INSERT INTO empty_table2 VALUES (200, 20), (201, 21), (202, 22)
   // txn1: abort
   // txn2: SELECT * FROM empty_table2;
-  std::cout<< "Begin" << std::endl;
-  std::cout<< std::endl;
-  std::cout<< std::endl;
-  std::cout<< std::endl;
+  std::cout << "Begin" << std::endl;
+  std::cout << std::endl;
+  std::cout << std::endl;
+  std::cout << std::endl;
 
   auto txn1 = GetTxnManager()->Begin();
   auto exec_ctx1 = std::make_unique<ExecutorContext>(txn1, GetCatalog(), GetBPM(), GetTxnManager(), GetLockManager());
@@ -179,7 +179,8 @@ TEST_F(TransactionTest, SimpleInsertRollbackTest) {
   GetTxnManager()->Abort(txn1);
   delete txn1;
 
-  std::cout<< "del txn1" << std::endl;
+  std::cout << "del txn1" << std::endl;
+  std::cout << std::endl;
 
   // Iterate through table make sure that values were not inserted.
   auto txn2 = GetTxnManager()->Begin();
