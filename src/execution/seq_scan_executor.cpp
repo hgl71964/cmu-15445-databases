@@ -21,7 +21,8 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
       done_(false) {}
 
 void SeqScanExecutor::Init() {
-  LOG_INFO("%s", table_info_->name_.c_str());
+  LOG_INFO("Seqscan %s - txn: %d", table_info_->name_.c_str(),
+           GetExecutorContext()->GetTransaction()->GetTransactionId());
   auto itr = table_info_->table_->Begin(GetExecutorContext()->GetTransaction());
   if (itr == table_info_->table_->End()) {
     done_ = true;

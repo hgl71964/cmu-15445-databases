@@ -24,7 +24,8 @@ UpdateExecutor::UpdateExecutor(ExecutorContext *exec_ctx, const UpdatePlanNode *
       child_executor_(std::move(child_executor)) {}
 
 void UpdateExecutor::Init() {
-  LOG_INFO("Update table: %s", table_info_->name_.c_str());
+  LOG_INFO("Update table: %s - txn: %d", table_info_->name_.c_str(),
+           GetExecutorContext()->GetTransaction()->GetTransactionId());
   child_executor_->Init();
 }
 

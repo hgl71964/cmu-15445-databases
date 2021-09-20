@@ -25,7 +25,8 @@ InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *
       done_(false) {}
 
 void InsertExecutor::Init() {
-  LOG_INFO("%s", tbl_meta_->name_.c_str());
+  LOG_INFO("Insert table %s - txn: %d", tbl_meta_->name_.c_str(),
+           GetExecutorContext()->GetTransaction()->GetTransactionId());
   if (!plan_->IsRawInsert()) {
     child_executor_->Init();
   }

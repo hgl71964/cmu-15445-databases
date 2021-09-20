@@ -393,6 +393,7 @@ void LockManager::circle_gcL() {
     auto itr = lock_table_[rid].request_queue_.begin();
     while (itr != lock_table_[rid].request_queue_.end()) {
       if (TransactionManager::GetTransaction(itr->txn_id_)->GetState() == TransactionState::ABORTED) {
+        LOG_INFO("break %d", itr->txn_id_);
         lock_table_[rid].request_queue_.erase(itr++);
         wake = true;
       } else {
