@@ -134,6 +134,7 @@ class LockManager {
 
   /** self */
   void queue_gcL(const RID &rid, txn_id_t txn_id);
+  void circle_gcL();
   void build_graphL();
   void clear_graphL();
   bool break_one_circleL();

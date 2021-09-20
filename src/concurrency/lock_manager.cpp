@@ -20,8 +20,6 @@
 namespace bustub {
 
 // latch_ - global lock protect adding/deleting element in lock_table_
-
-// XXX need global lock in each func?? - or tuple level lock for the map item is fine?
 // XXX transaction check fail should result in an Exception??
 
 bool LockManager::LockShared(Transaction *txn, const RID &rid) {
@@ -71,6 +69,11 @@ bool LockManager::LockShared(Transaction *txn, const RID &rid) {
       break;
     }
     lock_table_[rid].cv_.wait(tuple_level_lock);  // sleep and release - wake up and hold
+
+    // killed by dead lock detection thread
+    if (txn->GetState() == TransactionState::ABORTED) {
+      return false;
+    }
   }
   return true;
 }
@@ -118,6 +121,11 @@ bool LockManager::LockExclusive(Transaction *txn, const RID &rid) {
       break;
     }
     lock_table_[rid].cv_.wait(tuple_level_lock);  // sleep and release - wake up and hold
+
+    // killed by dead lock detection thread
+    if (txn->GetState() == TransactionState::ABORTED) {
+      return false;
+    }
   }
   return true;
 }
@@ -177,6 +185,11 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
       break;
     }
     lock_table_[rid].cv_.wait(tuple_level_lock);  // sleep and release - wake up and hold
+
+    // killed by dead lock detection thread
+    if (txn->GetState() == TransactionState::ABORTED) {
+      return false;
+    }
   }
 
   // if upgrade successful - mark no one is trying to upgrade
@@ -309,10 +322,7 @@ bool LockManager::break_one_circleL() {
   bool has_cycle = HasCycle(&txn_id);
   if (has_cycle) {
     LOG_INFO("break_one_circleL");
-    // TransactionManager::GetTransaction(txn_id)->SetState(TransactionState::ABORTED);
-    TransactionManager::GetTransaction(txn_id)
-    // TODO notify the waiting txn that it is aborted
-    // throw Exception(ExceptionType::INVALID, "abort");
+    TransactionManager::GetTransaction(txn_id)->SetState(TransactionState::ABORTED);
   }
   return has_cycle;
 }
@@ -337,6 +347,7 @@ void LockManager::RunCycleDetection() {
         }
       }
       LOG_INFO("break all");
+      circle_gcL();
       unlock_all_tuplesL();
     }
   }
@@ -375,6 +386,36 @@ void LockManager::build_graphL() {
 void LockManager::clear_graphL() {
   vector_txn_.clear();
   waits_for_.clear();
+}
+
+void LockManager::circle_gcL() {
+  std::vector<RID> rids;
+  for (auto &rid : rid_set_) {
+    bool wake = false;
+    auto itr = lock_table_[rid].request_queue_.begin();
+    while (itr != lock_table_[rid].request_queue_.end()) {
+      if (TransactionManager::GetTransaction(itr->txn_id_)->GetState() == TransactionState::ABORTED) {
+        lock_table_[rid].request_queue_.erase(itr++);
+        wake = true;
+      } else {
+        ++itr;
+      }
+    }
+
+    // wake up
+    if (wake) {
+      lock_table_[rid].cv_.notify_all();
+    }
+    // gc empty rid
+    if (lock_table_[rid].request_queue_.empty()) {
+      rids.push_back(rid);
+    }
+  }
+
+  // maintain valid RID set
+  for (auto &rid : rids) {
+    rid_set_.erase(rid);
+  }
 }
 
 void LockManager::queue_gcL(const RID &rid, txn_id_t txn_id) {
