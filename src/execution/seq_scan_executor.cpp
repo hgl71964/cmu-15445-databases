@@ -34,6 +34,28 @@ void SeqScanExecutor::Init() {
   LOG_INFO("%s", GetOutputSchema()->ToString().c_str());
 }
 
+/**
+ * NOTE: it is the app logic to request lock and unlock
+ * which depends on iso-level and executor type
+ */
+void SeqScanExecutor::lock(const RID &rid) {
+  if ((GetExecutorContext()->GetTransaction()->GetIsolationLevel() != IsolationLevel::READ_UNCOMMITTED) &&
+      (!GetExecutorContext()->GetTransaction()->IsSharedLocked(rid)) &&
+      (!GetExecutorContext()->GetTransaction()->IsExclusiveLocked(rid))) {
+    auto get_lock = GetExecutorContext()->GetLockManager()->LockShared(GetExecutorContext()->GetTransaction(), rid);
+    if (!get_lock) {
+      LOG_INFO("get_lock not ok - txn: %d", GetExecutorContext()->GetTransaction()->GetTransactionId());
+    }
+  }
+}
+void SeqScanExecutor::unlock(const RID &rid) {
+  // if exclusively lock, it is not here to release
+  if (GetExecutorContext()->GetTransaction()->IsSharedLocked(rid) &&
+      GetExecutorContext()->GetTransaction()->GetIsolationLevel() == IsolationLevel::READ_COMMITTED) {
+    GetExecutorContext()->GetLockManager()->Unlock(GetExecutorContext()->GetTransaction(), rid);
+  }
+}
+
 bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   if (done_) {
     return false;
@@ -44,13 +66,7 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   while (itr != table_info_->table_->End()) {
     // LOCK
     auto lock_rid = itr->GetRid();
-    auto get_lock =
-        GetExecutorContext()->GetLockManager()->LockShared(GetExecutorContext()->GetTransaction(), lock_rid);
-    if (!get_lock) {
-      LOG_INFO("get_lock not ok - txn: %d", GetExecutorContext()->GetTransaction()->GetTransactionId());
-      // throw Exception(ExceptionType::INVALID, "addEdge");
-      // return false;
-    }
+    lock(lock_rid);
 
     // get tuple
     auto tmp_tuple = *itr;
@@ -65,9 +81,7 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
     Tuple new_tuple(res, schema);
 
     // UNLOCK
-    if (GetExecutorContext()->GetTransaction()->GetIsolationLevel() == IsolationLevel::READ_COMMITTED && get_lock) {
-      GetExecutorContext()->GetLockManager()->Unlock(GetExecutorContext()->GetTransaction(), lock_rid);
-    }
+    unlock(lock_rid);
 
     // incr
     ++itr;
@@ -81,7 +95,7 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
     auto *p = plan_->GetPredicate();  // could be nullptr
     if (p == nullptr || plan_->GetPredicate()->Evaluate(&new_tuple, schema).GetAs<bool>()) {
       *tuple = new_tuple;
-      *rid = tmp_tuple.GetRid();  // XXX seems ok, outputSchema is changed but RID is the same
+      *rid = tmp_tuple.GetRid();  // seems ok, outputSchema is changed but RID is the same
       return true;
     }
   }

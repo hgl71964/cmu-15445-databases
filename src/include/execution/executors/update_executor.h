@@ -13,6 +13,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -45,6 +46,9 @@ class UpdateExecutor : public AbstractExecutor {
   void Init() override;
 
   bool Next([[maybe_unused]] Tuple *tuple, RID *rid) override;
+
+  void lock(const RID &rid);
+  void unlock(const RID &rid);
 
   /*
    * Given an old tuple, creates a new updated tuple based on the updateinfo given in the plan

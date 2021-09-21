@@ -39,6 +39,9 @@ class SeqScanExecutor : public AbstractExecutor {
 
   const Schema *GetOutputSchema() override { return plan_->OutputSchema(); }
 
+  void lock(const RID &rid);
+  void unlock(const RID &rid);
+
  private:
   /** The sequential scan plan node to be executed. */
   const SeqScanPlanNode *plan_;

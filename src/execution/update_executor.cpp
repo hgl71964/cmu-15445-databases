@@ -29,6 +29,21 @@ void UpdateExecutor::Init() {
   child_executor_->Init();
 }
 
+void UpdateExecutor::lock(const RID &rid) {
+  if (!GetExecutorContext()->GetTransaction()->IsExclusiveLocked(rid)) {
+    bool get_lock;
+    if (GetExecutorContext()->GetTransaction()->IsSharedLocked(rid)) {
+      get_lock = GetExecutorContext()->GetLockManager()->LockUpgrade(GetExecutorContext()->GetTransaction(), rid);
+    } else {
+      get_lock = GetExecutorContext()->GetLockManager()->LockExclusive(GetExecutorContext()->GetTransaction(), rid);
+    }
+    if (!get_lock) {
+      LOG_INFO("update get_lock not ok - txn: %d", GetExecutorContext()->GetTransaction()->GetTransactionId());
+    }
+  }
+}
+void UpdateExecutor::unlock([[maybe_unused]] const RID &rid) { LOG_INFO("fatal - update should not release X lock"); }
+
 bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
   while (child_executor_->Next(tuple, rid)) {
     Tuple tmp_tuple = *tuple;
@@ -36,13 +51,9 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
 
     // get updated tuple
     Tuple updated_tuple = GenerateUpdatedTuple(tmp_tuple);
-    // bool get_lock =
-    //     GetExecutorContext()->GetLockManager()->LockUpgrade(GetExecutorContext()->GetTransaction(), tmp_rid);
-    // if (!get_lock) {
-    //   LOG_INFO("get_lock not ok - txn: %d", GetExecutorContext()->GetTransaction()->GetTransactionId());
-    //   return false;
-    // }
-    *tuple = updated_tuple;
+
+    // LOCK
+    lock(tmp_rid);
 
     // update tuple
     bool ok = table_info_->table_->UpdateTuple(updated_tuple, tmp_rid, GetExecutorContext()->GetTransaction());
