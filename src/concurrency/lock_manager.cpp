@@ -20,8 +20,6 @@
 namespace bustub {
 
 // latch_ - global lock protect adding/deleting element in lock_table_
-// XXX transaction check fail should result in an Exception??
-
 bool LockManager::LockShared(Transaction *txn, const RID &rid) {
   // txn instantiate as growing state
   LOG_INFO("LockShared: %d", txn->GetTransactionId());
@@ -224,8 +222,6 @@ bool LockManager::Unlock(Transaction *txn, const RID &rid) {
   // notify - let others run
   lock_table_[rid].cv_.notify_all();
 
-  // anything else? XXX
-
   return true;
 }
 
@@ -361,7 +357,6 @@ void LockManager::build_graphL() {
     std::vector<txn_id_t> holders{};
     std::vector<txn_id_t> waiters{};
     for (auto &request : lock_table_[rid].request_queue_) {
-      // XXX only aborted txn is not valid??
       if (TransactionManager::GetTransaction(request.txn_id_)->GetState() == TransactionState::ABORTED) {
         continue;
       }
