@@ -160,7 +160,7 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
   txn->GetExclusiveLockSet()->emplace(rid);
   LockRequest lr(txn->GetTransactionId(), LockMode::EXCLUSIVE);
 
-  // erase old request in queue - if granted unlock ?? FIXME
+  // erase old request in queue
   queue_gcL(rid, txn->GetTransactionId());
 
   // 4. append to queue
