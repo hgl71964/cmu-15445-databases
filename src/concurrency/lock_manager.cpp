@@ -24,7 +24,8 @@ namespace bustub {
 
 bool LockManager::LockShared(Transaction *txn, const RID &rid) {
   // txn instantiate as growing state
-  // LOG_INFO("LockShared: %d", txn->GetTransactionId());
+  LOG_INFO("LockShared: %d", txn->GetTransactionId());
+  print_txn_state(txn);
   if (txn->GetState() != TransactionState::GROWING) {
     txn->SetState(TransactionState::ABORTED);
     return false;
@@ -199,6 +200,7 @@ bool LockManager::LockUpgrade(Transaction *txn, const RID &rid) {
 }
 
 bool LockManager::Unlock(Transaction *txn, const RID &rid) {
+  LOG_INFO("UNLOCK: %d", txn->GetTransactionId());
   // check if txn state ok
   if (txn->GetState() == TransactionState::GROWING) {
     // print_txn_state(txn);

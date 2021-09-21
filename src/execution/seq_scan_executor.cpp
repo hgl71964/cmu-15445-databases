@@ -48,7 +48,8 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
         GetExecutorContext()->GetLockManager()->LockShared(GetExecutorContext()->GetTransaction(), lock_rid);
     if (!get_lock) {
       LOG_INFO("get_lock not ok - txn: %d", GetExecutorContext()->GetTransaction()->GetTransactionId());
-      return false;
+      // throw Exception(ExceptionType::INVALID, "addEdge");
+      // return false;
     }
 
     // get tuple
@@ -62,6 +63,11 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
       res.push_back(val);
     }
     Tuple new_tuple(res, schema);
+
+    // UNLOCK
+    if (GetExecutorContext()->GetTransaction()->GetIsolationLevel() == IsolationLevel::READ_COMMITTED && get_lock) {
+      GetExecutorContext()->GetLockManager()->Unlock(GetExecutorContext()->GetTransaction(), lock_rid);
+    }
 
     // incr
     ++itr;
